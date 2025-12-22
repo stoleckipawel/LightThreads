@@ -11,7 +11,7 @@ title = "LightThreads"
   dateFormat = "2 January 2006"
   # logo = "img/logo.png"
   # secondaryLogo = "img/secondary-logo.png"
-  description = "Rendering notes, GPU experiments, and real-time graphics engineering."
+  description = "Graphics software engineering — real-time rendering notes, GPU experiments, and performance analysis."
   # copyright = "Copy, _right?_ :thinking_face:"
 
   [params.author]
