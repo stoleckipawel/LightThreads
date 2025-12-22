@@ -1,0 +1,15 @@
+# LightThreads — Hugo site config (MAIN ENTRY POINT)
+#
+# Edit THIS file for site-wide settings:
+# - baseURL (GitHub Pages / custom domain)
+# - title
+# - theme
+#
+# Edit theme-specific settings in: config/_default/
+# (menus, params, markup, languages)
+
+baseURL = "https://stoleckipawel.github.io/LightThreads/"
+languageCode = "en-us"
+title = "LightThreads"
+theme = "blowfish"
+enableRobotsTXT = true
