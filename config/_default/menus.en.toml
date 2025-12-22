@@ -22,6 +22,9 @@ weight = 20
 
 [[main]]
 name = "LinkedIn"
+name = ""
+pre = "linkedin"
+title = "LinkedIn"
 url = "https://www.linkedin.com/in/stoleckirendering/"
 weight = 40
 
@@ -33,7 +36,9 @@ url = "https://github.com/stoleckipawel"
 weight = 30
 
 [[main]]
-name = "Email"
+name = ""
+pre = "mail"
+title = "Email"
 url = "mailto:stoleckipawel98@gmail.com"
 weight = 50
 
