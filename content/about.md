@@ -16,6 +16,13 @@ What I plan to write about:
 - ✨ **Ray tracing pipelines**: getting quality where it matters without breaking the frame budget.
 - 🔍 **Profiling, shader tuning**, and small tooling that makes performance work repeatable.
 
+**About the author** 🙋‍♂️
+
+**I’m Paweł Stołecki** — a 3D graphics software engineer focused on real‑time rendering. I enjoy the intersection where visual‑quality research meets hands‑on optimization: pushing shading closer to ground truth while keeping systems efficient and shippable. 🔬⚡
+
+**At CD PROJEKT RED** — I work on direct & indirect lighting, cross‑platform GPU/CPU/memory profiling, and platform‑specific optimizations. My day‑to‑day is practical and investigative: experiment → measure → dig into what the hardware is actually doing → ship focused improvements. 🧪📈
+
+**Previously:** Techland — contributed to gbuffer fill, lighting, post‑processing, and rendering scalability across many platforms (handhelds → consoles → high‑end). I began as a Technical Artist, which still shapes my emphasis on tooling, debuggability, and developer workflows. 🎮🛠️
 
 
 
