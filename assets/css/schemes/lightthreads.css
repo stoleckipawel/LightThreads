@@ -1,0 +1,49 @@
+/* LightThreads color scheme
+ * ─────────────────────────────────────────────────────────────────
+ * Thread Orange:   #FF9F1C  (255, 159, 28)  — primary accent
+ * Ray Gold:        #FFD166  (255, 209, 102) — highlight / glow
+ * Graphite Black:  #0B0B0E  (11, 11, 14)    — deep background
+ * Burnt Umber:     #3A1700  (58, 23, 0)     — secondary dark
+ * Warm White:      #F5F5F7  (245, 245, 247) — primary text
+ * Muted Gray:      #A1A1AA  (161, 161, 170) — muted text
+ * ─────────────────────────────────────────────────────────────────
+ */
+
+:root {
+  /* Neutral scale — Graphite → Warm White */
+  --color-neutral: 245, 245, 247;               /* Warm White (text) */
+  --color-neutral-50: 245, 245, 247;            /* Warm White */
+  --color-neutral-100: 230, 230, 234;
+  --color-neutral-200: 200, 200, 206;
+  --color-neutral-300: 161, 161, 170;           /* Muted Gray */
+  --color-neutral-400: 120, 120, 130;
+  --color-neutral-500: 80, 80, 90;
+  --color-neutral-600: 58, 23, 0;               /* Burnt Umber hint */
+  --color-neutral-700: 30, 28, 26;
+  --color-neutral-800: 18, 18, 22;
+  --color-neutral-900: 11, 11, 14;              /* Graphite Black */
+
+  /* Primary — Thread Orange (#FF9F1C) */
+  --color-primary-50: 255, 247, 235;
+  --color-primary-100: 255, 237, 210;
+  --color-primary-200: 255, 220, 170;
+  --color-primary-300: 255, 195, 120;
+  --color-primary-400: 255, 175, 70;
+  --color-primary-500: 255, 159, 28;            /* Thread Orange */
+  --color-primary-600: 230, 135, 20;
+  --color-primary-700: 200, 110, 15;
+  --color-primary-800: 160, 85, 10;
+  --color-primary-900: 120, 60, 5;
+
+  /* Secondary — Ray Gold (#FFD166) for highlights */
+  --color-secondary-50: 255, 252, 245;
+  --color-secondary-100: 255, 248, 230;
+  --color-secondary-200: 255, 240, 200;
+  --color-secondary-300: 255, 225, 150;
+  --color-secondary-400: 255, 215, 120;
+  --color-secondary-500: 255, 209, 102;         /* Ray Gold */
+  --color-secondary-600: 240, 185, 70;
+  --color-secondary-700: 210, 155, 50;
+  --color-secondary-800: 170, 120, 35;
+  --color-secondary-900: 130, 90, 25;
+}
