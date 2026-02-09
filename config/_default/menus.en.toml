@@ -20,12 +20,12 @@ name = "About 👋"
 pageRef = "about"
 weight = 20
 
-[[main]]
-name = "GitHub"
-pre = "github"
-title = "GitHub"
-url = "https://github.com/stoleckipawel"
-weight = 30
+#[[main]]
+#name = "GitHub"
+#pre = "github"
+#title = "GitHub"
+#url = "https://github.com/stoleckipawel"
+#weight = 30
 
 [[main]]
 name = "LinkedIn"
