@@ -43,19 +43,19 @@ Frostbite introduced it at GDC 2017. UE5 ships it as **RDG**. Unity has its own 
 <div style="margin:1.5em 0;border-radius:12px;overflow:hidden;border:1.5px solid rgba(99,102,241,.25);background:linear-gradient(135deg,rgba(99,102,241,.04),transparent);">
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0;">
     <div style="padding:1em;text-align:center;border-right:1px solid rgba(99,102,241,.12);border-bottom:1px solid rgba(99,102,241,.12);">
-      <div style="font-size:1.6em;margin-bottom:.15em;">🔨</div>
-      <div style="font-weight:800;font-size:.95em;">Build</div>
-      <div style="font-size:.82em;opacity:.7;line-height:1.4;margin-top:.2em;">Working C++ frame graph, from scratch to prototype</div>
+      <div style="font-size:1.6em;margin-bottom:.15em;">�</div>
+      <div style="font-weight:800;font-size:.95em;">Learn Theory</div>
+      <div style="font-size:.82em;opacity:.7;line-height:1.4;margin-top:.2em;">What a frame graph is, why every engine uses one, and how each piece works</div>
     </div>
     <div style="padding:1em;text-align:center;border-right:1px solid rgba(99,102,241,.12);border-bottom:1px solid rgba(99,102,241,.12);">
+      <div style="font-size:1.6em;margin-bottom:.15em;">🔨</div>
+      <div style="font-weight:800;font-size:.95em;">Build MVP</div>
+      <div style="font-size:.82em;opacity:.7;line-height:1.4;margin-top:.2em;">Working C++ frame graph, from scratch to prototype in ~300 lines</div>
+    </div>
+    <div style="padding:1em;text-align:center;border-bottom:1px solid rgba(99,102,241,.12);">
       <div style="font-size:1.6em;margin-bottom:.15em;">🗺️</div>
       <div style="font-weight:800;font-size:.95em;">Map to UE5</div>
       <div style="font-size:.82em;opacity:.7;line-height:1.4;margin-top:.2em;">Every piece maps to RDG — read the source with confidence</div>
-    </div>
-    <div style="padding:1em;text-align:center;border-bottom:1px solid rgba(99,102,241,.12);">
-      <div style="font-size:1.6em;margin-bottom:.15em;">🚀</div>
-      <div style="font-weight:800;font-size:.95em;">Go further</div>
-      <div style="font-size:.82em;opacity:.7;line-height:1.4;margin-top:.2em;">Aliasing, pass merging, async compute, split barriers</div>
     </div>
   </div>
 </div>
@@ -437,8 +437,199 @@ Most engines use **dynamic** or **hybrid**. The compile is so cheap that caching
 </div>
 
 <div style="margin:1.2em 0;padding:.8em 1em;border-radius:8px;background:linear-gradient(135deg,rgba(34,197,94,.06),rgba(59,130,246,.06));border:1px solid rgba(34,197,94,.2);font-size:.92em;line-height:1.6;">
-🏭 <strong>Not theoretical.</strong> Frostbite reported <strong>50% VRAM reduction</strong> from aliasing at GDC 2017. UE5's RDG ships the same optimization today — every <code>FRDGTexture</code> marked as transient goes through the same aliasing pipeline we build in <a href="/posts/frame-graph-build-it/">Part II</a>.<br>
-<span style="opacity:.7;font-size:.9em;">Next up: Part II implements all of this in ~300 lines of C++ — automatic barriers, pass culling, and memory aliasing — then maps each piece to UE5's RDG.</span>
+🏭 <strong>Not theoretical.</strong> Frostbite reported <strong>50% VRAM reduction</strong> from aliasing at GDC 2017. UE5's RDG ships the same optimization today — every <code>FRDGTexture</code> marked as transient goes through the same aliasing pipeline we build in <a href="/posts/frame-graph-build-it/">Part II</a>.
+</div>
+
+---
+
+## 🔬 Advanced Features
+
+The core graph — scheduling, barriers, aliasing — covers most of what a render graph does. Three more techniques build on the same DAG to handle remaining production requirements. [Part II](/posts/frame-graph-build-it/) implements the core; [Part III](/posts/frame-graph-production/) shows how engines deploy all of these at scale.
+
+### 🔗 Pass Merging
+
+Tile-based GPUs (Mali, Adreno, Apple Silicon) render into small on-chip tile memory. Between separate render passes, the GPU **flushes** tiles to main memory and **reloads** them for the next pass — expensive bandwidth you'd rather avoid.
+
+<div class="diagram-tiles">
+  <div class="dt-col">
+    <div class="dt-col-title">Without merging (tile-based GPU)</div>
+    <div class="dt-col-body">
+      <strong>Pass A (GBuffer)</strong><br>
+      ├ render to tile<br>
+      ├ <span class="dt-cost-bad">flush tile → main memory ✗ slow</span><br>
+      └ done<br><br>
+      <strong>Pass B (Lighting)</strong><br>
+      ├ <span class="dt-cost-bad">load from main memory ✗ slow</span><br>
+      ├ render to tile<br>
+      └ done
+    </div>
+  </div>
+  <div class="dt-col" style="border-color:#22c55e">
+    <div class="dt-col-title" style="color:#22c55e">With merging</div>
+    <div class="dt-col-body">
+      <strong>Pass A+B (merged subpass)</strong><br>
+      ├ render A to tile<br>
+      ├ <span class="dt-cost-good">B reads tile directly — free!</span><br>
+      └ flush once → main memory<br><br>
+      <strong>Saves:</strong> 1 flush + 1 load per merged pair<br>
+      = <span class="dt-cost-good">massive bandwidth savings on mobile</span>
+    </div>
+  </div>
+</div>
+
+Two adjacent passes can merge when they share the **same render target dimensions**, the second only reads the first's output at the **current pixel** (not arbitrary UVs), and there are **no external dependencies** forcing a render pass break. The graph compiler walks the sorted pass list, checks these three conditions, and groups compatible passes into one API render pass with multiple subpasses.
+
+<div style="overflow-x:auto;margin:1em 0">
+<table style="width:100%;border-collapse:collapse;font-size:.88em;border-radius:10px;overflow:hidden">
+  <thead>
+    <tr style="background:linear-gradient(135deg,rgba(59,130,246,.1),rgba(139,92,246,.08))">
+      <th style="padding:.65em 1em;text-align:left;border-bottom:2px solid rgba(59,130,246,.15)">API</th>
+      <th style="padding:.65em 1em;text-align:left;border-bottom:2px solid rgba(59,130,246,.15)">Merged group becomes</th>
+      <th style="padding:.65em 1em;text-align:left;border-bottom:2px solid rgba(59,130,246,.15)">Intermediate data</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td style="padding:.5em 1em;font-weight:600;color:#ef4444">Vulkan</td><td style="padding:.5em 1em">Single <code>VkRenderPass</code> + N <code>VkSubpassDescription</code></td><td style="padding:.5em 1em">Subpass inputs (tile-local)</td></tr>
+    <tr style="background:rgba(127,127,127,.04)"><td style="padding:.5em 1em;font-weight:600;color:#6b7280">Metal</td><td style="padding:.5em 1em">One <code>MTLRenderPassDescriptor</code>, <code>storeAction = .dontCare</code></td><td style="padding:.5em 1em"><code>loadAction = .load</code></td></tr>
+    <tr><td style="padding:.5em 1em;font-weight:600;color:#3b82f6">D3D12</td><td style="padding:.5em 1em"><code>BeginRenderPass</code>/<code>EndRenderPass</code> (Tier 1/2)</td><td style="padding:.5em 1em">No direct subpass — via render pass tiers</td></tr>
+  </tbody>
+</table>
+</div>
+
+Desktop GPUs (NVIDIA, AMD) don't use tile-based rendering, so merging has minimal benefit there. This optimization matters most on mobile and Switch.
+
+### 🛡️ Aliasing Pitfalls
+
+Memory aliasing is powerful but has sharp edges you need to know about before implementing it:
+
+<div class="diagram-warn">
+  <div class="dw-title">⚠ Aliasing pitfalls</div>
+  <div class="dw-row"><div class="dw-label">Format compat</div><div>depth/stencil metadata may conflict with color targets on same VkMemory → skip aliasing for depth formats</div></div>
+  <div class="dw-row"><div class="dw-label">Initialization</div><div>reused memory = garbage contents → first use <strong>MUST</strong> be a full clear or fullscreen write</div></div>
+  <div class="dw-row"><div class="dw-label">Imported res</div><div>survive across frames — <strong>never alias</strong>. Only transient resources qualify.</div></div>
+</div>
+
+Production engines also refine the aliasing implementation: **placed resources** (binding at offsets within `ID3D12Heap` or `VkDeviceMemory` heaps), **power-of-two bucketing** (reducing fragmentation), and **cross-frame pooling** (amortizing allocation cost to near zero). [Part III](/posts/frame-graph-production/) covers how each engine handles these.
+
+### ⚡ Async Compute
+
+Modern GPUs expose multiple hardware queues — at minimum a graphics queue and a compute queue. If two passes have **no dependency path between them** in the DAG, they can execute concurrently on different queues.
+
+The compiler discovers these opportunities through **reachability analysis**. Walk the DAG in reverse topological order; each pass's bitset = union of its successors' bitsets + the successors themselves. Two passes are independent iff neither can reach the other — one bitwise AND per query.
+
+<div class="diagram-bitset">
+<table>
+  <tr><th>Pass</th><th>Depth</th><th>GBuf</th><th>SSAO</th><th>Light</th><th>Tone</th><th>Reaches</th></tr>
+  <tr><td><strong>Depth</strong></td><td class="bit-0">0</td><td class="bit-1">1</td><td class="bit-1">1</td><td class="bit-1">1</td><td class="bit-1">1</td><td>everything</td></tr>
+  <tr><td><strong>GBuf</strong></td><td class="bit-0">0</td><td class="bit-0">0</td><td class="bit-1">1</td><td class="bit-1">1</td><td class="bit-1">1</td><td>SSAO, Light, Tone</td></tr>
+  <tr><td><strong>SSAO</strong></td><td class="bit-0">0</td><td class="bit-0">0</td><td class="bit-0">0</td><td class="bit-1">1</td><td class="bit-1">1</td><td>Light, Tone</td></tr>
+  <tr><td><strong>Light</strong></td><td class="bit-0">0</td><td class="bit-0">0</td><td class="bit-0">0</td><td class="bit-0">0</td><td class="bit-1">1</td><td>Tonemap</td></tr>
+  <tr><td><strong>Tone</strong></td><td class="bit-0">0</td><td class="bit-0">0</td><td class="bit-0">0</td><td class="bit-0">0</td><td class="bit-0">0</td><td>—</td></tr>
+</table>
+</div>
+
+<div class="diagram-card dc-success" style="margin:.5em 0">
+  <strong>Can Shadows overlap SSAO?</strong> Neither can reach the other → <strong>independent → different queues</strong>
+</div>
+
+When a dependency edge crosses queue boundaries, a GPU fence (signal + wait) synchronizes them. **Transitive reduction** minimizes fence count: if a later fence already covers an earlier one's guarantee transitively, the earlier fence is redundant. Walk the DAG edges — if source is on queue A and destination on queue B, insert a fence. Then remove any fence whose guarantee is already covered by another fence later on the same queue.
+
+<div class="diagram-tiles">
+  <div class="dt-col">
+    <div class="dt-col-title"><span class="dt-cost-bad">Without transitive reduction</span></div>
+    <div class="dt-col-body" style="font-family:ui-monospace,monospace;font-size:.9em">
+      Graphics: [A] ──fence──→ [C]<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└──fence──→ [D]<br><br>
+      Compute: &nbsp;[B] ──fence──→ [C]<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└──fence──→ [D]<br><br>
+      <span class="dt-cost-bad">4 fences</span>
+    </div>
+  </div>
+  <div class="dt-col" style="border-color:#22c55e">
+    <div class="dt-col-title"><span class="dt-cost-good">With transitive reduction</span></div>
+    <div class="dt-col-body" style="font-family:ui-monospace,monospace;font-size:.9em">
+      Graphics: [A] ──────────→ [C]<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↑<br>
+      Compute: &nbsp;[B] ──fence──┘<br><br>
+      B's fence covers both C and D<br>
+      (D is after C on graphics queue)<br><br>
+      <span class="dt-cost-good">1 fence</span>
+    </div>
+  </div>
+</div>
+
+Try it yourself — drag compute-eligible passes between queues and see fence costs update in real time:
+
+{{< interactive-async >}}
+
+**Should a pass go async?** Compute-only, lasting ≥ 0.5 ms, and independent from the graphics tail. Below that threshold, fence overhead (~5–15 µs) eats the savings.
+
+<div class="diagram-tree">
+  <div class="dt-node"><strong>Should this pass go async?</strong></div>
+  <div class="dt-branch">
+    <strong>Is it compute-only?</strong>
+    <span class="dt-no"> — no →</span> <span class="dt-result dt-fail">can't</span> <span style="opacity:.6">(needs rasterization)</span>
+    <div class="dt-branch">
+      <span class="dt-yes">yes ↓</span><br>
+      <strong>Duration > 0.5ms?</strong>
+      <span class="dt-no"> — no →</span> <span class="dt-result dt-fail">don't bother</span> <span style="opacity:.6">(fence overhead ≈ 5–15µs eats the savings)</span>
+      <div class="dt-branch">
+        <span class="dt-yes">yes ↓</span><br>
+        <strong>Independent from graphics tail?</strong>
+        <span class="dt-no"> — no →</span> <span class="dt-result dt-fail">can't</span> <span style="opacity:.6">(DAG dependency)</span>
+        <div class="dt-branch">
+          <span class="dt-yes">yes ↓</span><br>
+          <span class="dt-result dt-pass">ASYNC COMPUTE ✓</span><br>
+          <span style="font-size:.85em;opacity:.7">Good candidates: SSAO, volumetrics, particle sim, light clustering</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+### ✂️ Split Barriers
+
+A regular barrier stalls the pipeline — the GPU finishes all prior work, transitions the resource, then resumes. A **split barrier** separates this into two halves:
+
+<div class="diagram-steps">
+  <div class="ds-step">
+    <div class="ds-num" style="background:#3b82f6">3</div>
+    <div><strong>Source pass finishes</strong> ← <span style="color:#3b82f6;font-weight:600">begin barrier</span> (flush caches)</div>
+  </div>
+  <div class="ds-step">
+    <div class="ds-num" style="background:#6b7280">4</div>
+    <div>Unrelated pass &ensp; <span style="opacity:.5">↕ GPU freely executes these</span></div>
+  </div>
+  <div class="ds-step">
+    <div class="ds-num" style="background:#6b7280">5</div>
+    <div>Unrelated pass</div>
+  </div>
+  <div class="ds-step">
+    <div class="ds-num" style="background:#22c55e">6</div>
+    <div><strong>Destination pass starts</strong> ← <span style="color:#22c55e;font-weight:600">end barrier</span> (invalidate caches)</div>
+  </div>
+</div>
+
+The gap between begin and end is free overlap — unrelated passes execute without stalling on this transition. Placement is straightforward: begin goes right after the source pass finishes, end goes right before the destination pass starts.
+
+Drag the BEGIN marker in the interactive tool below to see how the overlap gap changes:
+
+{{< interactive-split-barriers >}}
+
+Worth it when the gap spans **2+ passes**. If begin and end are adjacent, a split barrier degenerates into a regular barrier with extra API overhead. Vulkan uses `vkCmdSetEvent2` / `vkCmdWaitEvents2`; D3D12 uses `BARRIER_FLAG_BEGIN_ONLY` / `BARRIER_FLAG_END_ONLY`.
+
+<div class="diagram-ftable">
+<table>
+  <tr><th>Gap size</th><th>Action</th><th>Why</th></tr>
+  <tr><td><strong>0 passes</strong></td><td>regular barrier</td><td>begin/end adjacent → no benefit</td></tr>
+  <tr><td><strong>1 pass</strong></td><td>maybe</td><td>marginal overlap</td></tr>
+  <tr><td><strong>2+ passes</strong></td><td>split</td><td>measurable GPU overlap</td></tr>
+  <tr><td><strong>cross-queue</strong></td><td>fence instead</td><td>can't split across queues</td></tr>
+</table>
+</div>
+
+<div style="margin:1.2em 0;padding:.8em 1em;border-radius:8px;background:linear-gradient(135deg,rgba(34,197,94,.06),rgba(59,130,246,.06));border:1px solid rgba(34,197,94,.2);font-size:.92em;line-height:1.6;">
+<span style="opacity:.7;font-size:.9em;">That's all the theory. <a href="/posts/frame-graph-build-it/">Part II</a> implements the core (barriers, culling, aliasing) in ~300 lines of C++. <a href="/posts/frame-graph-production/">Part III</a> shows how production engines deploy all of these at scale.</span>
 </div>
 
 ---

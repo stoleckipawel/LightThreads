@@ -19,97 +19,7 @@ showTableOfContents: false
 How UE5, Frostbite, and Unity implement the same ideas at scale — what they added, what they compromised, and where they still differ.
 </div>
 
-[Part II](/posts/frame-graph-build-it/) left us with a working frame graph — automatic barriers, pass culling, and memory aliasing in ~300 lines of C++. That's a solid MVP, but production engines face problems we didn't: parallel command recording, subpass merging for mobile GPUs, async compute scheduling, and managing thousands of passes across legacy codebases. This article examines how three major engines solved those problems, then lays out an upgrade roadmap for taking the MVP further.
-
-Before diving into production engines, let's see what our MVP graph actually does with two common pipeline topologies.
-
----
-
-## 🖥️ A Real Frame
-
-**Deferred Pipeline**
-
-Depth prepass → GBuffer → SSAO → Lighting → Tonemap → Present
-
-<div class="diagram-flow" style="justify-content:center;flex-wrap:wrap">
-  <div class="df-step df-primary">Depth<span class="df-sub">depth (T)</span></div>
-  <div class="df-arrow"></div>
-  <div class="df-step df-primary">GBuf<span class="df-sub">albedo (T) · norm (T)</span></div>
-  <div class="df-arrow"></div>
-  <div class="df-step df-primary">SSAO<span class="df-sub">scratch (T) · result (T)</span></div>
-  <div class="df-arrow"></div>
-  <div class="df-step df-primary">Lighting<span class="df-sub">HDR (T)</span></div>
-  <div class="df-arrow"></div>
-  <div class="df-step">Tonemap</div>
-  <div class="df-arrow"></div>
-  <div class="df-step df-success">Present<span class="df-sub">backbuffer (imported)</span></div>
-</div>
-<div style="text-align:center;font-size:.75em;opacity:.5;margin-top:-.3em">(T) = transient — aliased by graph &nbsp;&nbsp;&nbsp; (imported) = owned externally</div>
-
-Resources fall into two categories. **Transient** resources — GBuffer MRTs, SSAO scratch, HDR lighting buffer, bloom scratch — are created and destroyed within the frame. The graph owns their memory and aliases them. **Imported** resources — the backbuffer (swapchain), TAA history, shadow atlas — persist across frames. The graph tracks their barriers but doesn't own their memory.
-
-**Forward Pipeline**
-
-<div class="diagram-flow" style="justify-content:center;flex-wrap:wrap">
-  <div class="df-step df-primary">Depth<span class="df-sub">depth (T)</span></div>
-  <div class="df-arrow"></div>
-  <div class="df-step df-primary">Forward + MSAA<span class="df-sub">color MSAA (T)</span></div>
-  <div class="df-arrow"></div>
-  <div class="df-step df-primary">Resolve<span class="df-sub">color (T)</span></div>
-  <div class="df-arrow"></div>
-  <div class="df-step df-primary">PostProc<span class="df-sub">HDR (T)</span></div>
-  <div class="df-arrow"></div>
-  <div class="df-step df-success">Present<span class="df-sub">backbuffer (imported)</span></div>
-</div>
-<div style="text-align:center;font-size:.75em;opacity:.5;margin-top:-.3em">Fewer passes, fewer transient resources → less aliasing opportunity. Same API, same automatic barriers.</div>
-
-**Side-by-side**
-
-<div style="overflow-x:auto;margin:1em 0">
-<table style="width:100%;border-collapse:collapse;border-radius:10px;overflow:hidden;font-size:.92em">
-  <thead>
-    <tr style="background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(139,92,246,.1))">
-      <th style="padding:.7em 1em;text-align:left;border-bottom:2px solid rgba(59,130,246,.2)">Aspect</th>
-      <th style="padding:.7em 1em;text-align:center;border-bottom:2px solid rgba(59,130,246,.2);color:#3b82f6">Deferred</th>
-      <th style="padding:.7em 1em;text-align:center;border-bottom:2px solid rgba(139,92,246,.2);color:#8b5cf6">Forward</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr><td style="padding:.5em 1em">Passes</td><td style="padding:.5em 1em;text-align:center">6</td><td style="padding:.5em 1em;text-align:center">5</td></tr>
-    <tr style="background:rgba(127,127,127,.04)"><td style="padding:.5em 1em">Peak VRAM (no aliasing)</td><td style="padding:.5em 1em;text-align:center">X MB</td><td style="padding:.5em 1em;text-align:center">Y MB</td></tr>
-    <tr><td style="padding:.5em 1em">Peak VRAM (with aliasing)</td><td style="padding:.5em 1em;text-align:center">0.6X MB</td><td style="padding:.5em 1em;text-align:center">0.75Y MB</td></tr>
-    <tr style="background:linear-gradient(90deg,rgba(34,197,94,.08),rgba(34,197,94,.04))"><td style="padding:.5em 1em;font-weight:700">VRAM saved by aliasing</td><td style="padding:.5em 1em;text-align:center;font-weight:700;color:#22c55e;font-size:1.1em">40%</td><td style="padding:.5em 1em;text-align:center;font-weight:700;color:#22c55e;font-size:1.1em">25%</td></tr>
-    <tr><td style="padding:.5em 1em">Barriers auto-inserted</td><td style="padding:.5em 1em;text-align:center">8</td><td style="padding:.5em 1em;text-align:center">5</td></tr>
-  </tbody>
-</table>
-</div>
-
-**What about CPU cost?** Every phase is linear-time:
-
-<div style="overflow-x:auto;margin:1em 0">
-<table style="width:100%;border-collapse:collapse;font-size:.9em">
-  <thead>
-    <tr>
-      <th style="padding:.6em 1em;text-align:left;border-bottom:2px solid rgba(34,197,94,.3);color:#22c55e">Phase</th>
-      <th style="padding:.6em 1em;text-align:center;border-bottom:2px solid rgba(34,197,94,.3)">Complexity</th>
-      <th style="padding:.6em 1em;text-align:left;border-bottom:2px solid rgba(34,197,94,.3)">Notes</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr><td style="padding:.45em 1em;font-weight:600">Topological sort</td><td style="padding:.45em 1em;text-align:center;font-family:ui-monospace,monospace;color:#22c55e">O(V + E)</td><td style="padding:.45em 1em;font-size:.9em;opacity:.8">Kahn's algorithm — passes + edges</td></tr>
-    <tr style="background:rgba(127,127,127,.04)"><td style="padding:.45em 1em;font-weight:600">Pass culling</td><td style="padding:.45em 1em;text-align:center;font-family:ui-monospace,monospace;color:#22c55e">O(V + E)</td><td style="padding:.45em 1em;font-size:.9em;opacity:.8">Backward reachability from output</td></tr>
-    <tr><td style="padding:.45em 1em;font-weight:600">Lifetime scan</td><td style="padding:.45em 1em;text-align:center;font-family:ui-monospace,monospace;color:#22c55e">O(V)</td><td style="padding:.45em 1em;font-size:.9em;opacity:.8">Single pass over sorted list</td></tr>
-    <tr style="background:rgba(127,127,127,.04)"><td style="padding:.45em 1em;font-weight:600">Aliasing</td><td style="padding:.45em 1em;text-align:center;font-family:ui-monospace,monospace;color:#22c55e">O(R log R)</td><td style="padding:.45em 1em;font-size:.9em;opacity:.8">Sort by first-use, then O(R) free-list scan</td></tr>
-    <tr><td style="padding:.45em 1em;font-weight:600">Barrier insertion</td><td style="padding:.45em 1em;text-align:center;font-family:ui-monospace,monospace;color:#22c55e">O(V)</td><td style="padding:.45em 1em;font-size:.9em;opacity:.8">Linear scan with state lookup</td></tr>
-  </tbody>
-</table>
-</div>
-
-<div style="font-size:.88em;line-height:1.5;opacity:.75;margin:-.3em 0 1em 0">Where V = passes (~25), E = dependency edges (~50), R = transient resources (~15). Everything is linear or near-linear. All data fits in L1 cache — the entire compile is well under 0.1 ms.</div>
-
-The graph doesn't care about your rendering *strategy*. It cares about your *dependencies*. Deferred or forward, the same `FrameGraph` class handles both — different topology, same automatic barriers and aliasing. That's the whole point.
-
-Now let's see how production engines take this further.
+[Part II](/posts/frame-graph-build-it/) left us with a working frame graph — automatic barriers, pass culling, and memory aliasing in ~300 lines of C++. That's a solid MVP, but production engines face problems we didn't: parallel command recording, subpass merging for mobile GPUs, async compute scheduling, and managing thousands of passes across legacy codebases. This article examines how three major engines solved those problems, then maps out the path from MVP to production.
 
 ---
 
@@ -170,14 +80,18 @@ UE5's RDG is the frame graph you're most likely to work with. It was retrofitted
       <code>ERDGPassFlags::Raster</code> — Graphics queue, render targets<br>
       <code>ERDGPassFlags::Compute</code> — Graphics queue, compute dispatch<br>
       <code>ERDGPassFlags::AsyncCompute</code> — Async compute queue<br>
-      <code>ERDGPassFlags::NeverCull</code> — Exempt from dead-pass culling
+      <code>ERDGPassFlags::NeverCull</code> — Exempt from dead-pass culling<br>
+      <code>ERDGPassFlags::Copy</code> — Copy queue operations<br>
+      <code>ERDGPassFlags::SkipRenderPass</code> — Raster pass that manages its own render pass
     </div>
   </div>
   <div style="flex:1;min-width:260px;border:1px solid rgba(139,92,246,.25);border-radius:10px;overflow:hidden">
     <div style="background:linear-gradient(135deg,rgba(139,92,246,.12),rgba(139,92,246,.05));padding:.6em 1em;font-weight:700;font-size:.9em;color:#8b5cf6;border-bottom:1px solid rgba(139,92,246,.15)">Resource Types</div>
     <div style="padding:.6em 1em;font-size:.85em;line-height:1.8">
       <code>FRDGTexture</code> / <code>FRDGTextureRef</code> — Render targets, SRVs, UAVs<br>
-      <code>FRDGBuffer</code> / <code>FRDGBufferRef</code> — Structured, vertex/index, indirect args
+      <code>FRDGBuffer</code> / <code>FRDGBufferRef</code> — Structured, vertex/index, indirect args<br>
+      <code>FRDGUniformBuffer</code> — Uniform/constant buffer references<br>
+      Created via <code>CreateTexture()</code> (transient) or <code>RegisterExternalTexture()</code> (imported)
     </div>
   </div>
 </div>
@@ -188,18 +102,47 @@ UE5's RDG is the frame graph you're most likely to work with. It was retrofitted
 <div class="diagram-ftable">
 <table>
   <tr><th>Feature</th><th>Our MVP</th><th>UE5 RDG</th></tr>
-  <tr><td><strong>Transient alloc</strong></td><td>free-list scan per frame</td><td>pooled allocator amortized across frames</td></tr>
-  <tr><td><strong>Barriers</strong></td><td>one-at-a-time</td><td>batched + split begin/end</td></tr>
-  <tr><td><strong>Pass culling</strong></td><td>backward walk from output</td><td>refcount-based + skip allocation</td></tr>
-  <tr><td><strong>Cmd recording</strong></td><td>single thread</td><td>parallel FRHICmdList</td></tr>
-  <tr><td><strong>Rebuild</strong></td><td>dynamic</td><td>hybrid (cached)</td></tr>
+  <tr><td><strong>Transient alloc</strong></td><td>free-list scan per frame</td><td>pooled allocator amortized across frames (<code>FRDGTransientResourceAllocator</code>)</td></tr>
+  <tr><td><strong>Barriers</strong></td><td>one-at-a-time</td><td>batched + split begin/end via <code>FRDGBarrierBatchBegin</code>/<code>End</code></td></tr>
+  <tr><td><strong>Pass culling</strong></td><td>backward walk from output</td><td>refcount-based + skip allocation for culled passes</td></tr>
+  <tr><td><strong>Cmd recording</strong></td><td>single thread</td><td>parallel <code>FRHICommandList</code> — one per pass group, merged at submit</td></tr>
+  <tr><td><strong>Rebuild</strong></td><td>dynamic</td><td>hybrid (cached topology, invalidated on change)</td></tr>
 </table>
+</div>
+
+**Navigating the RDG source.** The key entry points when reading UE5's RDG code:
+
+<div class="diagram-steps">
+  <div class="ds-step">
+    <div class="ds-num">1</div>
+    <div><code>RenderGraphBuilder.h</code> — <code>FRDGBuilder</code> is the graph object. <code>AddPass()</code>, <code>CreateTexture()</code>, <code>Execute()</code> are all here. Start reading here.</div>
+  </div>
+  <div class="ds-step">
+    <div class="ds-num">2</div>
+    <div><code>RenderGraphPass.h</code> — <code>FRDGPass</code> stores the parameter struct, execute lambda, and pass flags. The macro-generated metadata lives on the parameter struct.</div>
+  </div>
+  <div class="ds-step">
+    <div class="ds-num">3</div>
+    <div><code>RenderGraphResources.h</code> — <code>FRDGTexture</code>, <code>FRDGBuffer</code>, and their SRV/UAV views. Tracks current state for barrier emission. Check <code>FRDGResource::GetRHI()</code> to see when virtual becomes physical.</div>
+  </div>
+  <div class="ds-step">
+    <div class="ds-num">4</div>
+    <div><code>RenderGraphPrivate.h</code> — The compile phase: topological sort, pass culling, barrier batching, async compute fence insertion. The core algorithms live here.</div>
+  </div>
 </div>
 
 <div style="display:flex;align-items:flex-start;gap:.8em;border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:1em 1.2em;margin:1em 0;background:linear-gradient(135deg,rgba(34,197,94,.05),transparent)">
   <span style="font-size:1.4em;line-height:1">🔍</span>
-  <div style="font-size:.9em;line-height:1.55"><strong>Debugging.</strong> <code>RDG Insights</code> in the Unreal editor visualizes the full pass graph, resource lifetimes, and barrier placement. The frame is data — export it, diff it, analyze offline.</div>
+  <div style="font-size:.9em;line-height:1.55"><strong>RDG Insights.</strong> Enable via the Unreal editor to visualize the full pass graph, resource lifetimes, and barrier placement. Use <code>r.RDG.Debug</code> CVars for validation: <code>r.RDG.Debug.FlushGPU</code> serializes execution for debugging, <code>r.RDG.Debug.ExtendResourceLifetimes</code> disables aliasing to isolate corruption bugs. The frame is data — export it, diff it, analyze offline.</div>
 </div>
+
+**The legacy boundary.** The biggest practical challenge with RDG isn't the graph itself — it's the seam between RDG-managed passes and legacy `FRHICommandList` code. At this boundary:
+
+- Barriers must be inserted manually (RDG can't see what the legacy code does)
+- Resources must be "extracted" from RDG via `ConvertToExternalTexture()` before legacy code can use them
+- Re-importing back into RDG requires `RegisterExternalTexture()` with correct state tracking
+
+This boundary is shrinking every release as Epic migrates more passes to RDG, but in practice you'll still hit it when integrating third-party plugins or older rendering features.
 
 **What RDG gets wrong (or leaves on the table):**
 
@@ -208,8 +151,9 @@ UE5's RDG is the frame graph you're most likely to work with. It was retrofitted
   <div class="dl-item"><span class="dl-x">✗</span> <strong>Incomplete migration</strong> — Legacy FRHICommandList ←→ RDG boundary = manual barriers at the seam</div>
   <div class="dl-item"><span class="dl-x">✗</span> <strong>Macro-heavy API</strong> — BEGIN_SHADER_PARAMETER_STRUCT → opaque, no debugger stepping, fights dynamic composition</div>
   <div class="dl-item"><span class="dl-x">✗</span> <strong>Transient-only aliasing</strong> — Imported resources never aliased, even when lifetime is fully known within the frame</div>
-  <div class="dl-item"><span class="dl-x">✗</span> <strong>No automatic subpass merging</strong> — Delegated to RHI — graph can't optimize tiles</div>
+  <div class="dl-item"><span class="dl-x">✗</span> <strong>No automatic subpass merging</strong> — Delegated to RHI — graph can't optimize tile-based GPUs directly</div>
   <div class="dl-item"><span class="dl-x">✗</span> <strong>Async compute is opt-in</strong> — Manual ERDGPassFlags::AsyncCompute tagging. Compiler trusts, doesn't discover.</div>
+  <div class="dl-item"><span class="dl-x">✗</span> <strong>No cross-pass resource versioning</strong> — Unlike our MVP's read/write versioning, RDG uses a flat dependency model. Parallel reads are implicit.</div>
 </div>
 
 ### ❄️ Where Frostbite started
@@ -285,284 +229,47 @@ Frostbite's frame graph (O'Donnell & Barczak, GDC 2017: *"FrameGraph: Extensible
 
 ---
 
-## 🗺️ Upgrade Roadmap
+## � How Each Engine Scales It
 
-The MVP from [Part II](/posts/frame-graph-build-it/) already handles automatic barriers, pass culling, and basic memory aliasing. Here's what to add next, in what order, and why — bridging the gap between our prototype and what ships in production.
+[Part I](/posts/frame-graph-theory/) covered all the theory — pass merging, async compute, split barriers, and aliasing pitfalls. Here’s how each production engine actually implements those features, and where they diverge.
 
-### 💾 1. Production-grade memory aliasing
-**Priority: HIGH · Difficulty: Medium**
+### 💾 Memory aliasing at scale
 
-[Part II's MVP v3](/posts/frame-graph-build-it/) implements the core algorithm — lifetime scanning, greedy free-list allocation, and interval-graph coloring. That's enough to prove the 30–50% VRAM savings. But production engines refine it in three ways our MVP skips:
-
-<div class="diagram-steps">
-  <div class="ds-step">
-    <div class="ds-num">1</div>
-    <div><strong>Placed resources / heap sub-allocation.</strong> Our MVP assigns logical "blocks" — production engines allocate <code>ID3D12Heap</code> (D3D12) or <code>VkDeviceMemory</code> (Vulkan) and bind resources at offsets within them. This is what makes aliasing real on the GPU. Without placed resources, each allocation gets its own memory and aliasing is impossible.</div>
-  </div>
-  <div class="ds-step">
-    <div class="ds-num">2</div>
-    <div><strong>Power-of-two bucketing.</strong> Round resource sizes up to the nearest power of two before matching against the free list. Reduces fragmentation at the cost of slight over-allocation. UE5 does this in its transient allocator.</div>
-  </div>
-  <div class="ds-step">
-    <div class="ds-num">3</div>
-    <div><strong>Cross-frame pooling.</strong> Instead of allocating and freeing heaps every frame, maintain a persistent pool sized to peak usage over the last N frames. Amortizes allocation cost to near zero. Both UE5 and Frostbite pool aggressively.</div>
-  </div>
-</div>
-
-**What to watch out for:**
-
-<div class="diagram-warn">
-  <div class="dw-title">⚠ Aliasing pitfalls</div>
-  <div class="dw-row"><div class="dw-label">Format compat</div><div>depth/stencil metadata may conflict with color targets on same VkMemory → skip aliasing for depth formats</div></div>
-  <div class="dw-row"><div class="dw-label">Initialization</div><div>reused memory = garbage contents → first use <strong>MUST</strong> be a full clear or fullscreen write</div></div>
-  <div class="dw-row"><div class="dw-label">Imported res</div><div>survive across frames — <strong>never alias</strong>. Only transient resources qualify.</div></div>
-</div>
-
-UE5's transient allocator does all three refinements. The core algorithm from Part II is correct — these additions make it production-ready.
-
-### 🧩 2. Pass merging / subpass folding
-**Priority: HIGH on mobile · Difficulty: Medium**
-
-Critical for tile-based GPUs (Mali, Adreno, Apple). Merge compatible passes into Vulkan subpasses or Metal render pass load/store actions.
-
-<div class="diagram-tiles">
-  <div class="dt-col">
-    <div class="dt-col-title">Without merging (tile-based GPU)</div>
-    <div class="dt-col-body">
-      <strong>Pass A (GBuffer)</strong><br>
-      ├ render to tile<br>
-      ├ <span class="dt-cost-bad">flush tile → main memory ✗ slow</span><br>
-      └ done<br><br>
-      <strong>Pass B (Lighting)</strong><br>
-      ├ <span class="dt-cost-bad">load from main memory ✗ slow</span><br>
-      ├ render to tile<br>
-      ├ flush tile → main memory<br>
-      └ done
-    </div>
-  </div>
-  <div class="dt-col" style="border-color:#22c55e">
-    <div class="dt-col-title" style="color:#22c55e">With merging</div>
-    <div class="dt-col-body">
-      <strong>Pass A+B (merged subpass)</strong><br>
-      ├ render A to tile<br>
-      ├ <span class="dt-cost-good">B reads tile directly (subpass input — free!)</span><br>
-      └ flush once → main memory<br><br>
-      <strong>Saves:</strong> 1 flush + 1 load per merged pair<br>
-      = <span class="dt-cost-good">massive bandwidth savings on mobile</span>
-    </div>
-  </div>
-</div>
-
-**How the algorithm works:**
-
-The algorithm walks the sorted pass list and identifies **merge candidates** — adjacent passes that pass a checklist:
-
-<div class="diagram-tree">
-  <div class="dt-node"><strong>Can Pass A and Pass B merge?</strong></div>
-  <div class="dt-branch">
-    <strong>Same RT dimensions?</strong>
-    <span class="dt-no"> — no →</span> <span class="dt-result dt-fail">SKIP</span> <span style="opacity:.6">(tile sizes differ)</span>
-    <div class="dt-branch">
-      <span class="dt-yes">yes ↓</span><br>
-      <strong>Compatible attachments?</strong>
-      <span class="dt-no"> — no →</span> <span class="dt-result dt-fail">SKIP</span> <span style="opacity:.6">(B samples A at arbitrary UVs)</span>
-      <div class="dt-branch">
-        <span class="dt-yes">yes</span> <span style="opacity:.6">(B reads A's output at current pixel only)</span> <span class="dt-yes">↓</span><br>
-        <strong>No external deps?</strong>
-        <span class="dt-no"> — no →</span> <span class="dt-result dt-fail">SKIP</span> <span style="opacity:.6">(buffer dep leaves render pass)</span>
-        <div class="dt-branch">
-          <span class="dt-yes">yes ↓</span><br>
-          <span class="dt-result dt-pass">MERGE A + B → 1 subpass</span><br>
-          <span style="font-size:.85em;opacity:.7">union-find groups them → one VkRenderPass with N subpasses</span>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-**Translating to API calls:**
-
-<div style="overflow-x:auto;margin:1em 0">
-<table style="width:100%;border-collapse:collapse;font-size:.88em;border-radius:10px;overflow:hidden">
-  <thead>
-    <tr style="background:linear-gradient(135deg,rgba(59,130,246,.1),rgba(139,92,246,.08))">
-      <th style="padding:.65em 1em;text-align:left;border-bottom:2px solid rgba(59,130,246,.15)">API</th>
-      <th style="padding:.65em 1em;text-align:left;border-bottom:2px solid rgba(59,130,246,.15)">Merged group becomes</th>
-      <th style="padding:.65em 1em;text-align:left;border-bottom:2px solid rgba(59,130,246,.15)">Intermediate attachments</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr><td style="padding:.5em 1em;font-weight:600;color:#ef4444">Vulkan</td><td style="padding:.5em 1em">Single <code>VkRenderPass</code> + N <code>VkSubpassDescription</code></td><td style="padding:.5em 1em">Subpass inputs (tile-local read)</td></tr>
-    <tr style="background:rgba(127,127,127,.04)"><td style="padding:.5em 1em;font-weight:600;color:#6b7280">Metal</td><td style="padding:.5em 1em">One <code>MTLRenderPassDescriptor</code>, <code>storeAction = .dontCare</code></td><td style="padding:.5em 1em"><code>loadAction = .load</code></td></tr>
-    <tr><td style="padding:.5em 1em;font-weight:600;color:#3b82f6">D3D12</td><td style="padding:.5em 1em"><code>BeginRenderPass</code>/<code>EndRenderPass</code> (Tier 1/2)</td><td style="padding:.5em 1em">No direct subpass — via render pass tiers</td></tr>
-  </tbody>
-</table>
-</div>
-
-**What to watch out for:**
-
-- **Depth-stencil reuse** — be careful when merging passes that both write depth. Only one depth attachment per subpass group.
-- **Order matters** — the union-find should only merge passes that are *already adjacent* in the topological order. Merging non-adjacent passes would reorder execution.
-- **Profiling** — on desktop GPUs (NVIDIA, AMD), subpass merging has minimal impact because they don't use tile-based rendering. Don't add this complexity unless you ship on mobile or Switch.
-
-UE5 doesn't do this automatically in RDG — subpass merging is handled at a lower level in the RHI — but Frostbite's original design included it. Add if targeting mobile or console (Switch).
-
-### ⚡ 3. Async compute
-**Priority: MEDIUM · Difficulty: High**
-
-Requires multi-queue infrastructure (compute queue + graphics queue). The graph compiler must find independent subgraphs that can execute concurrently — passes with **no path between them** in the DAG.
-
-The interactive tool below lets you drag compute-eligible passes between queues and see fence costs in real time. After that, we'll cover the theory behind reachability analysis and fence minimization.
-
-{{< interactive-async >}}
-
-**How the reachability analysis works:**
-
-<div class="diagram-card" style="margin-bottom:.5em"><strong>DAG:</strong> Depth → GBuf → Lighting → Tonemap, with GBuf → SSAO → Lighting</div>
-
-<div class="diagram-bitset">
-<table>
-  <tr><th>Pass</th><th>Depth</th><th>GBuf</th><th>SSAO</th><th>Lighting</th><th>Tonemap</th><th>Reaches</th></tr>
-  <tr><td><strong>Depth</strong></td><td class="bit-0">0</td><td class="bit-1">1</td><td class="bit-1">1</td><td class="bit-1">1</td><td class="bit-1">1</td><td>everything</td></tr>
-  <tr><td><strong>GBuf</strong></td><td class="bit-0">0</td><td class="bit-0">0</td><td class="bit-1">1</td><td class="bit-1">1</td><td class="bit-1">1</td><td>SSAO, Light, Tone</td></tr>
-  <tr><td><strong>SSAO</strong></td><td class="bit-0">0</td><td class="bit-0">0</td><td class="bit-0">0</td><td class="bit-1">1</td><td class="bit-1">1</td><td>Light, Tone</td></tr>
-  <tr><td><strong>Lighting</strong></td><td class="bit-0">0</td><td class="bit-0">0</td><td class="bit-0">0</td><td class="bit-0">0</td><td class="bit-1">1</td><td>Tonemap</td></tr>
-  <tr><td><strong>Tonemap</strong></td><td class="bit-0">0</td><td class="bit-0">0</td><td class="bit-0">0</td><td class="bit-0">0</td><td class="bit-0">0</td><td>leaf</td></tr>
-</table>
-</div>
-
-<div class="diagram-card dc-success">
-  <strong>Can Shadows overlap SSAO?</strong><br>
-  reachable[Shadows].test(SSAO) = false, reachable[SSAO].test(Shadows) = false<br>
-  → <strong>independent!</strong> → can run on different queues
-</div>
-
-**Steps:**
-
-1. **Build reachability** — walk in reverse topological order. Each pass's bitset = union of successors' bitsets + successors themselves.
-2. **Query independence** — two passes overlap iff neither can reach the other. One AND + one compare per query.
-3. **Partition** — greedily assign compute-eligible passes to the compute queue whenever they're independent from the current graphics tail.
-
-**Fence placement:**
-
-Wherever a dependency edge crosses queue boundaries, you need a GPU fence (semaphore signal + wait). Walk the DAG edges: if source pass is on queue A and dest pass is on queue B, insert a fence. Minimize fence count by transitively reducing: if pass C already waits on a fence that pass B signaled, and pass B is after pass A on the same queue, pass C doesn't need a separate fence from pass A.
-
-<div class="diagram-tiles">
-  <div class="dt-col">
-    <div class="dt-col-title"><span class="dt-cost-bad">Without transitive reduction</span></div>
-    <div class="dt-col-body" style="font-family:ui-monospace,monospace;font-size:.9em">
-      Graphics: [A] ──fence──→ [C]<br>
-      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└──fence──→ [D]<br><br>
-      Compute: &nbsp;[B] ──fence──→ [C]<br>
-      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└──fence──→ [D]<br><br>
-      <span class="dt-cost-bad">4 fences</span>
-    </div>
-  </div>
-  <div class="dt-col" style="border-color:#22c55e">
-    <div class="dt-col-title"><span class="dt-cost-good">With transitive reduction</span></div>
-    <div class="dt-col-body" style="font-family:ui-monospace,monospace;font-size:.9em">
-      Graphics: [A] ──────────→ [C]<br>
-      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↑<br>
-      Compute: &nbsp;[B] ──fence──┘<br><br>
-      B's fence covers both C and D<br>
-      (D is after C on graphics queue)<br><br>
-      <span class="dt-cost-good">1 fence</span>
-    </div>
-  </div>
-</div>
-
-**What to watch out for:**
-
-<div class="diagram-tree">
-  <div class="dt-node"><strong>Should this pass go async?</strong></div>
-  <div class="dt-branch">
-    <strong>Is it compute-only?</strong>
-    <span class="dt-no"> — no →</span> <span class="dt-result dt-fail">can't</span> <span style="opacity:.6">(needs rasterization)</span>
-    <div class="dt-branch">
-      <span class="dt-yes">yes ↓</span><br>
-      <strong>Duration > 0.5ms?</strong>
-      <span class="dt-no"> — no →</span> <span class="dt-result dt-fail">don't bother</span> <span style="opacity:.6">(fence overhead ≈ 5–15µs eats the savings)</span>
-      <div class="dt-branch">
-        <span class="dt-yes">yes ↓</span><br>
-        <strong>Independent from graphics tail?</strong>
-        <span class="dt-no"> — no →</span> <span class="dt-result dt-fail">can't</span> <span style="opacity:.6">(DAG dependency)</span>
-        <div class="dt-branch">
-          <span class="dt-yes">yes ↓</span><br>
-          <span class="dt-result dt-pass">ASYNC COMPUTE ✓</span><br>
-          <span style="font-size:.85em;opacity:.7">Good candidates: SSAO, volumetrics, particle sim, light clustering</span>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-| Concern | Detail |
-|---------|--------|
-| **Queue ownership** | Vulkan: explicit `srcQueueFamilyIndex`/`dstQueueFamilyIndex` transfer. D3D12: `ID3D12Fence`. Both expensive — only if overlap wins exceed transfer cost. |
-| **HW contention** | NVIDIA: separate async engines. AMD: more independent CUs. Some GPUs just time-slice — profile to confirm real overlap. |
-
-In UE5, you opt in per pass with `ERDGPassFlags::AsyncCompute`; the RDG compiler handles fence insertion and cross-queue synchronization. Add after you have GPU-bound workloads that can genuinely overlap (e.g., SSAO while shadow maps render).
-
-### ✂️ 4. Split barriers
-**Priority: LOW · Difficulty: High**
-
-Place "begin" barrier as early as possible (right after the source pass finishes), "end" barrier as late as possible (right before the destination pass starts) → GPU has more room to overlap work between them. Drag the BEGIN marker in the interactive tool below to see how the overlap gap changes:
-
-{{< interactive-split-barriers >}}
-
-**How the placement algorithm works:**
-
-For each resource transition (resource R transitions from state S1 in pass A to state S2 in pass C):
-
-1. **Begin barrier placement** — find the earliest point after pass A where R is no longer read or written. This is pass A's position + 1 in the sorted list (i.e., immediately after A finishes). Insert a "begin" that flushes caches for S1.
-2. **End barrier placement** — find the latest point before pass C where R is still not yet needed. This is pass C's position − 1 (i.e., immediately before C starts). Insert an "end" that invalidates caches for S2.
-3. **The gap between begin and end** is where the GPU can freely schedule other work without stalling on this transition.
-
-**Translating to API calls:**
-
-| | Begin (after source pass) | End (before dest pass) |
-|---|---|---|
-| **Vulkan** | `vkCmdSetEvent2` (flush src stages) | `vkCmdWaitEvents2` (invalidate dst stages) |
-| **D3D12** | `BARRIER_FLAG_BEGIN_ONLY` | `BARRIER_FLAG_END_ONLY` |
-
-<div class="diagram-steps">
-  <div class="ds-step">
-    <div class="ds-num" style="background:#3b82f6">3</div>
-    <div><strong>Pass 3: GBuffer write</strong> ← <span style="color:#3b82f6;font-weight:600">begin barrier here</span> (flush COLOR_ATTACHMENT caches)</div>
-  </div>
-  <div class="ds-step">
-    <div class="ds-num" style="background:#6b7280">4</div>
-    <div>Pass 4: SSAO (unrelated) &nbsp; <span style="opacity:.5">↕ GPU freely executes pass 4 & 5</span></div>
-  </div>
-  <div class="ds-step">
-    <div class="ds-num" style="background:#6b7280">5</div>
-    <div>Pass 5: Bloom (unrelated)</div>
-  </div>
-  <div class="ds-step">
-    <div class="ds-num" style="background:#22c55e">6</div>
-    <div><strong>Pass 6: Lighting read</strong> ← <span style="color:#22c55e;font-weight:600">end barrier here</span> (invalidate SHADER_READ caches)</div>
-  </div>
-</div>
-<div class="diagram-card dc-success">Gap of 2 passes = 2 passes of free GPU overlap</div>
-
-**What to watch out for:**
+All three engines use the same core algorithm from [Part II](/posts/frame-graph-build-it/) — lifetime scanning + free-list allocation. The production differences:
 
 <div class="diagram-ftable">
 <table>
-  <tr><th>Gap size</th><th>Action</th><th>Why</th></tr>
-  <tr><td><strong>0 passes</strong></td><td>regular barrier</td><td>begin/end adjacent → no benefit</td></tr>
-  <tr><td><strong>1 pass</strong></td><td>maybe</td><td>marginal overlap</td></tr>
-  <tr><td><strong>2+ passes</strong></td><td>split</td><td>measurable GPU overlap</td></tr>
-  <tr><td><strong>cross-queue</strong></td><td>fence instead</td><td>can't split across queues</td></tr>
+  <tr><th>Refinement</th><th>UE5 RDG</th><th>Frostbite</th><th>Unity SRP</th></tr>
+  <tr><td><strong>Placed resources</strong></td><td><code>FRDGTransientResourceAllocator</code> binds into <code>ID3D12Heap</code> offsets</td><td>Heap sub-allocation from the start</td><td>Platform-dependent backend</td></tr>
+  <tr><td><strong>Size bucketing</strong></td><td>Power-of-two in transient allocator</td><td>Custom bin sizes</td><td>Per-platform</td></tr>
+  <tr><td><strong>Cross-frame pooling</strong></td><td>Persistent pool, peak-N-frames sizing</td><td>Aggressive pooling</td><td>Pool per render pipeline</td></tr>
+  <tr><td><strong>Imported aliasing</strong></td><td><span style="color:#ef4444">✗</span> transient only</td><td><span style="color:#22c55e">✓</span> any known lifetime</td><td><span style="color:#ef4444">✗</span> transient only</td></tr>
 </table>
 </div>
 
-- **Driver overhead** — each `VkEvent` costs driver tracking. Only split when the gap spans 2+ passes.
-- **Validation** — Vulkan validation layers flag bad event sequencing. Test with validation early.
-- **Diminishing returns** — modern desktop drivers hide barrier latency internally. Biggest wins on: mobile GPUs, heavy pass gaps, expensive layout changes (depth → shader-read).
-- **Async interaction** — if begin/end cross queue boundaries, use a fence instead. Handle before the split barrier pass.
+### 🔗 Pass merging
 
-Both Frostbite and UE5 support split barriers. Diminishing returns unless you're already saturating the pipeline. Add last, and only if profiling shows barrier stalls.
+- **Frostbite** merges automatically in the graph compiler — the original design treated it as first-class.
+- **UE5 RDG** delegates to the RHI layer. Pass authors never see it; the graph itself doesn't know about subpasses.
+- **Unity SRP** handles it per-platform in the backend, optimizing for mobile tile architectures.
+
+Desktop GPUs gain almost nothing from merging. Only worth the complexity if you ship on mobile or Switch.
+
+### ⚡ Async compute
+
+| Engine | Approach | Discovery |
+|--------|----------|-----------|
+| **UE5** | Opt-in via `ERDGPassFlags::AsyncCompute` per pass | Manual — compiler trusts the flag, handles fence insertion + cross-queue sync |
+| **Frostbite** | Graph compiler discovers independent subgraphs | Automatic — reachability analysis built into the compiler |
+| **Unity** | Varies by platform | Limited — more conservative to maintain portability |
+
+**Hardware reality:** NVIDIA uses separate async engines. AMD exposes more independent CUs. Some GPUs just time-slice — always profile to confirm real overlap. Vulkan requires explicit queue family ownership transfer; D3D12 uses `ID3D12Fence`. Both are expensive — only worth it if overlap wins exceed transfer cost.
+
+### ✂️ Split barriers
+
+Both Frostbite and UE5 support split barriers. UE5 batches them via `FRDGBarrierBatchBegin`/`FRDGBarrierBatchEnd`. Frostbite's compiler places begin/end automatically based on pass gaps.
+
+Diminishing returns on desktop — modern drivers hide barrier latency internally. Biggest wins on mobile GPUs and expensive layout transitions (depth → shader-read). Add last, and only if profiling shows barrier stalls.
 
 ---
 
@@ -570,7 +277,7 @@ Both Frostbite and UE5 support split barriers. Diminishing returns unless you're
 
 A render graph is not always the right answer. If your project has a fixed pipeline with 3–4 passes that will never change, the overhead of a graph compiler is wasted complexity. But the moment your renderer needs to *grow* — new passes, new platforms, new debug tools — the graph pays for itself in the first week.
 
-Across these three articles, we covered the full arc: [Part I](/posts/frame-graph-theory/) laid out the theory — why manual resource management breaks at scale and how the declare/compile/execute lifecycle solves it. [Part II](/posts/frame-graph-build-it/) turned that theory into working C++ — three iterations from scaffolding to automatic barriers, pass culling, and memory aliasing. And this article mapped those ideas onto what ships in UE5, Frostbite, and Unity, then charted the path from MVP to production: placed-resource heaps, subpass merging, async compute, and split barriers.
+Across these three articles, we covered the full arc: [Part I](/posts/frame-graph-theory/) laid out all the theory — the declare/compile/execute lifecycle, pass merging, async compute, and split barriers. [Part II](/posts/frame-graph-build-it/) turned the core into working C++ — automatic barriers, pass culling, and memory aliasing. And this article mapped those ideas onto what ships in UE5, Frostbite, and Unity, showing how each engine implements the same concepts at production scale.
 
 You can now open `RenderGraphBuilder.h` in UE5 and *read* it, not reverse-engineer it. You know what `FRDGBuilder::AddPass` builds, how the transient allocator aliases memory, why `ERDGPassFlags::AsyncCompute` exists, and where the RDG boundary with legacy code still leaks.
 
