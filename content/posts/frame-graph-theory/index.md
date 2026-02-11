@@ -567,30 +567,32 @@ Try it yourself — move compute-eligible passes between queues and see how fenc
 
 {{< interactive-async >}}
 
-#### Decision checklist
+#### Should this pass go async?
 
-<div class="diagram-tree">
-  <div class="dt-node"><strong>Should this pass go async?</strong></div>
-  <div class="dt-branch">
-    <strong>Is it compute-only?</strong>
-    <span class="dt-no"> — no →</span> <span class="dt-result dt-fail">can't</span> <span style="opacity:.6">(needs rasterization)</span>
-    <div class="dt-branch">
-      <span class="dt-yes">yes ↓</span><br>
-      <strong>Independent from graphics tail?</strong>
-      <span class="dt-no"> — no →</span> <span class="dt-result dt-fail">can't</span> <span style="opacity:.6">(DAG dependency)</span>
-      <div class="dt-branch">
-        <span class="dt-yes">yes ↓</span><br>
-        <strong>Overlaps with complementary workload?</strong>
-        <span class="dt-no"> — no →</span> <span class="dt-result dt-fail">profile first</span> <span style="opacity:.6">(contention may cancel the gain)</span>
-        <div class="dt-branch">
-          <span class="dt-yes">yes ↓</span><br>
-          <span class="dt-result dt-pass">ASYNC COMPUTE ✓</span><br>
-          <span style="font-size:.85em;opacity:.7">Good candidates: SSAO alongside ROP-bound geometry, volumetrics during shadow rasterization, particle sim during UI</span>
-        </div>
-      </div>
-    </div>
+<div style="margin:1.2em 0;max-width:420px;font-size:.88em;">
+  <div style="display:flex;align-items:center;gap:.6em;padding:.55em .8em;border-radius:8px 8px 0 0;background:rgba(99,102,241,.06);border:1.5px solid rgba(99,102,241,.15);border-bottom:none;">
+    <span style="font-weight:700;">Compute-only?</span>
+    <span style="margin-left:auto;font-size:.82em;color:#ef4444;">no → needs rasterization</span>
   </div>
+  <div style="text-align:center;color:#22c55e;font-weight:700;font-size:.75em;line-height:1.8;">yes ↓</div>
+  <div style="display:flex;align-items:center;gap:.6em;padding:.55em .8em;background:rgba(99,102,241,.06);border:1.5px solid rgba(99,102,241,.15);border-bottom:none;">
+    <span style="font-weight:700;">Independent of graphics?</span>
+    <span style="margin-left:auto;font-size:.82em;color:#ef4444;">no → shared resource</span>
+  </div>
+  <div style="text-align:center;color:#22c55e;font-weight:700;font-size:.75em;line-height:1.8;">yes ↓</div>
+  <div style="display:flex;align-items:center;gap:.6em;padding:.55em .8em;background:rgba(99,102,241,.06);border:1.5px solid rgba(99,102,241,.15);border-bottom:none;">
+    <span style="font-weight:700;">Complementary overlap?</span>
+    <span style="margin-left:auto;font-size:.82em;color:#ef4444;">no → profile first</span>
+  </div>
+  <div style="text-align:center;color:#22c55e;font-weight:700;font-size:.75em;line-height:1.8;">yes ↓</div>
+  <div style="display:flex;align-items:center;gap:.6em;padding:.55em .8em;background:rgba(99,102,241,.06);border:1.5px solid rgba(99,102,241,.15);">
+    <span style="font-weight:700;">Enough work between fences?</span>
+    <span style="margin-left:auto;font-size:.82em;color:#ef4444;">no → sync eats the gain</span>
+  </div>
+  <div style="text-align:center;color:#22c55e;font-weight:700;font-size:.75em;line-height:1.8;">yes ↓</div>
+  <div style="padding:.55em .8em;border-radius:0 0 8px 8px;background:rgba(34,197,94,.08);border:1.5px solid rgba(34,197,94,.25);text-align:center;font-weight:800;color:#22c55e;">ASYNC COMPUTE ✓</div>
 </div>
+<div style="font-size:.82em;opacity:.6;margin-top:-.4em;">Good candidates: SSAO alongside ROP-bound geometry, volumetrics during shadow rasterization, particle sim during UI.</div>
 
 ### ✂️ Split Barriers
 

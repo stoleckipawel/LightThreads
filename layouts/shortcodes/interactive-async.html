@@ -3,7 +3,7 @@
   <div class="widget-header">
     <span class="widget-icon">🔬</span>
     <span class="widget-title">Interactive: Async Compute Scheduling</span>
-    <p class="widget-hint">Modern GPUs have separate Graphics and Compute queues that run <strong>in parallel</strong>. Move compute-eligible passes (blue) to the Compute queue — the GPU executes both lanes simultaneously, finishing the frame faster. Yellow dashed lines are <strong>fences</strong> (GPU sync points needed when one queue waits for another).</p>
+    <p class="widget-hint">Move compute-eligible passes <strong>(blue)</strong> to the Compute queue to overlap work. Yellow dashed lines = <strong>fences</strong> (cross-queue sync points).</p>
   </div>
   <div class="async-example-bar">
     <button class="async-ex-btn async-ex-active" onclick="asyncSetExample(0)">Deferred Shading</button>
