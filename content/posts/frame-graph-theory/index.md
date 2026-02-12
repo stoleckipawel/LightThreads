@@ -300,8 +300,12 @@ The declared DAG goes in, an optimized execution plan comes out. Three things ha
         <div class="dp-title">SYNCHRONIZE</div>
         <ul><li>walk each resource handoff</li><li>emit minimal barriers</li><li>→ barrier list</li></ul>
       </div>
+      <div class="dp-stage">
+        <div class="dp-title">BACK RESOURCES</div>
+        <ul><li>create or reuse physical memory</li><li>apply the alias map</li><li>→ physical bindings</li></ul>
+      </div>
     </div>
-    <div style="text-align:center;font-size:.82em;opacity:.6;margin-top:.3em">Still CPU — producing data structures for the execute phase</div>
+    <div style="text-align:center;font-size:.82em;opacity:.6;margin-top:.3em">Still CPU — all decisions made before the GPU sees a single command</div>
   </div>
 </div>
 
@@ -326,16 +330,12 @@ The declared DAG goes in, an optimized execution plan comes out. Three things ha
 
 ## ▶️ The Execute Step
 
-The plan is ready — now the GPU gets involved. This phase walks the compiled pass order, applies barriers, and calls your execute lambdas.
+The plan is ready — now the GPU gets involved. Every decision has already been made during compile: pass order, memory layout, barriers, physical resource bindings. Execute just walks the plan.
 
 <div class="diagram-box">
   <div class="db-title">▶️ EXECUTE — recording GPU commands</div>
   <div class="db-body">
     <div class="diagram-pipeline">
-      <div class="dp-stage">
-        <div class="dp-title">BACK RESOURCES</div>
-        <ul><li>create or reuse physical memory</li><li>apply the alias map</li></ul>
-      </div>
       <div class="dp-stage">
         <div class="dp-title">RUN PASSES</div>
         <ul><li>for each pass in compiled order:</li><li>insert barriers → call <code>execute()</code></li></ul>
@@ -345,7 +345,7 @@ The plan is ready — now the GPU gets involved. This phase walks the compiled p
         <ul><li>release transients (or pool them)</li><li>reset the frame allocator</li></ul>
       </div>
     </div>
-    <div style="text-align:center;font-size:.82em;opacity:.6;margin-top:.3em">The only phase that touches the GPU API</div>
+    <div style="text-align:center;font-size:.82em;opacity:.6;margin-top:.3em">The only phase that touches the GPU API — resources already bound</div>
   </div>
 </div>
 
@@ -681,6 +681,26 @@ Try it — drag the BEGIN marker left to widen the overlap gap and watch the sta
 
 <div class="fg-reveal" style="margin:1.4em 0;padding:.85em 1.1em;border-radius:10px;background:linear-gradient(135deg,rgba(34,197,94,.06),rgba(59,130,246,.06));border:1px solid rgba(34,197,94,.15);font-size:.92em;line-height:1.65;">
 That's all the theory. <a href="../frame-graph-build-it/" style="font-weight:600;">Part II</a> implements the core — barriers, culling, aliasing — in ~300 lines of C++. <a href="../frame-graph-production/" style="font-weight:600;">Part III</a> shows how production engines deploy all of these at scale.
+</div>
+
+---
+
+## 🎛️ Putting It All Together
+
+You've now seen every piece the compiler works with — topological sorting, pass culling, barrier insertion, async compute scheduling, memory aliasing, split barriers. In a simple 5-pass pipeline these feel manageable. In a production renderer? You're looking at **15–25 passes, 30+ resource edges, and dozens of implicit dependencies** — all inferred from `read()` and `write()` calls that no human can hold in their head at once.
+
+<div class="fg-reveal" style="margin:1.2em 0;padding:.85em 1.1em;border-radius:10px;border:1.5px solid rgba(139,92,246,.2);background:linear-gradient(135deg,rgba(139,92,246,.05),transparent);font-size:.92em;line-height:1.65;">
+<strong>This is the trade-off at the heart of every render graph.</strong> Dependencies become <em>implicit</em> — the graph infers ordering from data flow, which means you never declare "pass A must run before pass B." That's powerful: the compiler can reorder, cull, and parallelize freely. But it also means <strong>dependencies are hidden</strong>. Miss a <code>read()</code> call and the graph silently reorders two passes that shouldn't overlap. Add an assert and you'll catch the <em>symptom</em> — but not the missing edge that caused it.
+</div>
+
+The render graph isn't a safety net — it's a tool that requires discipline. You still need to build the graph in the right order, track what modifies what, and validate that every resource dependency is explicitly declared. **But here's the upside:** because every dependency flows through the graph, you can build tools to **visualize** the entire pipeline — something that's impossible when barriers and ordering are scattered across hand-written render code.
+
+The explorer below is a production-scale graph. Toggle each compiler feature on and off to see exactly what it contributes. Click any pass to inspect its implicit dependencies — every edge was inferred, not hand-written.
+
+{{< interactive-full-pipeline >}}
+
+<div class="fg-reveal" style="margin:1.2em 0;padding:.85em 1.1em;border-radius:10px;border:1px solid rgba(139,92,246,.15);background:rgba(139,92,246,.04);font-size:.9em;line-height:1.65;">
+<strong>Why this matters:</strong> With all features off, you're looking at what a renderer <em>without</em> a frame graph must manage by hand — every dependency, every barrier, every memory decision, across every pass. Turn them on one by one and watch the compiler do the work. That's the pitch: <strong>trade implicit dependencies for compiler-automated scheduling, synchronization, and memory management.</strong> The graph hides where dependencies are — but it also gives you the tooling to see <em>all of them at once</em>, which manual code never could.
 </div>
 
 ---

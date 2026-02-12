@@ -383,7 +383,7 @@ Full updated source:
 
 That's three of the four intro promises delivered — automatic ordering, barrier insertion, and dead-pass culling. The only piece missing: resources still live for the entire frame. Version 3 fixes that with lifetime analysis and memory aliasing.
 
-UE5's RDG does the same thing. When you call `FRDGBuilder::AddPass`, RDG builds the dependency graph from your declared reads/writes, topologically sorts it, culls dead passes, and inserts barriers — all before recording a single GPU command. The migration is incomplete, though — large parts of UE5's renderer still use legacy `FRHICommandList` calls outside the graph, requiring manual barriers at the RDG boundary. More on that in [Part III](/posts/frame-graph-production/).
+UE5's RDG does the same thing. When you call `FRDGBuilder::AddPass`, RDG builds the dependency graph from your declared reads/writes, topologically sorts it, culls dead passes, and inserts barriers — all before recording a single GPU command. The migration to RDG is ongoing — some parts of UE5's renderer still use legacy `FRHICommandList` calls outside the graph, requiring manual barriers at the RDG boundary. Epic is actively moving more passes into the graph with each release. More on that in [Part III](/posts/frame-graph-production/).
 
 ---
 
@@ -570,12 +570,12 @@ Two additions to the `FrameGraph` class: (1) a lifetime scan that records each t
 +    bool     isTransient = true;
 +};
 
-@@ FrameGraph::execute() @@
+@@ FrameGraph::compile() @@
      auto sorted = topoSort();
      cull(sorted);
 +    auto lifetimes = scanLifetimes(sorted);     // NEW v3
 +    auto mapping   = aliasResources(lifetimes); // NEW v3
-     // ... existing barrier + execute loop ...
++    // mapping now holds physical bindings — execute just runs passes
 
 @@ scanLifetimes() — walk sorted passes, record first/last use @@
 +    for (uint32_t order = 0; order < sorted.size(); order++) {

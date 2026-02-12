@@ -174,7 +174,7 @@ Diminishing returns on desktop — modern drivers hide barrier latency internall
 
 ## ③ Execute — Recording & Submission
 
-After the compiler finishes, every decision has been made — pass order, memory layout, barrier placement. The execute phase just walks the plan and records GPU commands. Here's where production engines scale beyond our MVP.
+After the compiler finishes, every decision has been made — pass order, memory layout, barrier placement, physical resource bindings. The execute phase just walks the plan and records GPU commands. No allocation happens here — that's all done during compile, which makes execute safe to parallelize and the compiled plan cacheable across frames. Here's where production engines scale beyond our MVP.
 
 ### 🧵 Parallel command recording
 
@@ -182,9 +182,9 @@ Our MVP records on a single thread. Production engines split the sorted pass lis
 
 UE5 creates parallel `FRHICommandList` instances — one per pass group — and joins them before queue submission. This is where the bulk of CPU frame time goes in a graph-based renderer, so parallelizing it matters.
 
-### 🏚️ The legacy boundary (UE5)
+### 🔗 The RDG–legacy boundary (UE5)
 
-The biggest practical challenge with RDG isn't the graph itself — it's the seam between RDG-managed passes and legacy `FRHICommandList` code. At this boundary:
+The biggest practical consideration with RDG is the seam between RDG-managed passes and legacy `FRHICommandList` code. At this boundary:
 
 - Barriers must be inserted manually (RDG can't see what the legacy code does)
 - Resources must be "extracted" from RDG via `ConvertToExternalTexture()` before legacy code can use them
@@ -220,15 +220,15 @@ This boundary is shrinking every release as Epic migrates more passes to RDG, bu
   </div>
 </div>
 
-### ⚠️ UE5 RDG — known limitations
+### 📝 UE5 RDG — current state & roadmap
 
 <div class="diagram-limits">
-  <div class="dl-title">RDG Limitations</div>
-  <div class="dl-item"><span class="dl-x">✗</span> <strong>Incomplete migration</strong> — Legacy FRHICommandList ←→ RDG boundary = manual barriers at the seam</div>
-  <div class="dl-item"><span class="dl-x">✗</span> <strong>Macro-heavy API</strong> — BEGIN_SHADER_PARAMETER_STRUCT → opaque, no debugger stepping, fights dynamic composition</div>
-  <div class="dl-item"><span class="dl-x">✗</span> <strong>Transient-only aliasing</strong> — Imported resources never aliased, even when lifetime is fully known within the frame</div>
-  <div class="dl-item"><span class="dl-x">✗</span> <strong>No automatic subpass merging</strong> — Delegated to RHI — graph can't optimize render pass structure directly</div>
-  <div class="dl-item"><span class="dl-x">✗</span> <strong>Async compute is opt-in</strong> — Manual ERDGPassFlags::AsyncCompute tagging. Compiler trusts, doesn't discover.</div>
+  <div class="dl-title">RDG — Current Engineering Trade-offs</div>
+  <div class="dl-item"><span class="dl-x">▸</span> <strong>Ongoing migration</strong> — Legacy FRHICommandList ←→ RDG boundary requires manual barriers; Epic is actively moving more passes into the graph each release</div>
+  <div class="dl-item"><span class="dl-x">▸</span> <strong>Macro-based parameter declaration</strong> — BEGIN_SHADER_PARAMETER_STRUCT trades debuggability and dynamic composition for compile-time safety and code generation</div>
+  <div class="dl-item"><span class="dl-x">▸</span> <strong>Transient-only aliasing</strong> — Imported resources are not aliased, even when lifetime is fully known within the frame — a deliberate simplification that may evolve</div>
+  <div class="dl-item"><span class="dl-x">▸</span> <strong>No automatic subpass merging</strong> — Delegated to the RHI layer; the graph compiler doesn't optimize render pass structure directly</div>
+  <div class="dl-item"><span class="dl-x">▸</span> <strong>Async compute is opt-in</strong> — Manual ERDGPassFlags::AsyncCompute tagging. The compiler handles fence insertion but doesn't discover async opportunities automatically</div>
 </div>
 
 ---
@@ -239,7 +239,7 @@ A render graph is not always the right answer. If your project has a fixed pipel
 
 Across these three articles, we covered the full arc: [Part I](/posts/frame-graph-theory/) laid out all the theory — the declare/compile/execute lifecycle, pass merging, async compute, and split barriers. [Part II](/posts/frame-graph-build-it/) turned the core into working C++ — automatic barriers, pass culling, and memory aliasing. And this article mapped those ideas onto what ships in UE5 and Frostbite, showing how production engines implement the same concepts at scale.
 
-You can now open `RenderGraphBuilder.h` in UE5 and *read* it, not reverse-engineer it. You know what `FRDGBuilder::AddPass` builds, how the transient allocator aliases memory, why `ERDGPassFlags::AsyncCompute` exists, and where the RDG boundary with legacy code still leaks.
+You can now open `RenderGraphBuilder.h` in UE5 and *read* it, not reverse-engineer it. You know what `FRDGBuilder::AddPass` builds, how the transient allocator aliases memory, why `ERDGPassFlags::AsyncCompute` exists, and how the RDG boundary with legacy code works in practice.
 
 The point isn't that every project needs a render graph. The point is that if you understand how they work, you'll make a better decision about whether *yours* does.
 

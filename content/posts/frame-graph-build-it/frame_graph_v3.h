@@ -130,8 +130,13 @@ public:
         passes_.back().setup();
     }
 
-    // ── v3: execute with lifetime analysis and aliasing ───────
-    void execute() {
+    // ── v3: compile — builds the execution plan + allocates memory ──
+    struct CompiledPlan {
+        std::vector<uint32_t> sorted;
+        std::vector<std::vector<uint32_t>> mapping;
+    };
+
+    CompiledPlan compile() {
         printf("\n[1] Building dependency edges...\n");
         buildEdges();
         printf("[2] Topological sort...\n");
@@ -143,11 +148,17 @@ public:
         printf("[5] Aliasing resources (greedy free-list)...\n");
         auto mapping   = aliasResources(lifetimes); // NEW v3
 
-        // At this point, 'mapping' tells you which physical block
-        // each virtual resource should use. Bind them here.
+        // Physical bindings are now decided — execute can't change them.
+        // This makes the compiled plan cacheable and thread-safe.
+        return { std::move(sorted), std::move(mapping) };
+    }
+
+    // ── v3: execute — just records GPU commands ───────────────
+    void execute() {
+        auto plan = compile();
 
         printf("[6] Executing (with automatic barriers):\n");
-        for (uint32_t idx : sorted) {
+        for (uint32_t idx : plan.sorted) {
             if (!passes_[idx].alive) {
                 printf("  -- skip: %s (CULLED)\n", passes_[idx].name.c_str());
                 continue;

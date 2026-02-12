@@ -1,0 +1,688 @@
+{{/* Interactive Full Pipeline Explorer — minimap + focus view */}}
+<div class="interactive-widget" id="pipeline-widget">
+  <div class="widget-header" style="border-top-color:#8b5cf6">
+    <span class="widget-icon">🎛️</span>
+    <span class="widget-title">Interactive: Full Pipeline Explorer</span>
+    <p class="widget-hint">The minimap shows the full render graph. Click any pass to focus — the detail view shows its neighbors, resources, and how the compiler transforms it.</p>
+  </div>
+  <div class="widget-body">
+    <div class="pipe-example-bar" id="pipe-example-bar">
+      <span class="pipe-example-label">Pipeline:</span>
+      <button class="widget-btn pipe-ex-btn pipe-ex-active" data-ex="0" onclick="pipeSetExample(0)">Deferred + Post</button>
+      <button class="widget-btn pipe-ex-btn" data-ex="1" onclick="pipeSetExample(1)">Forward+ Clustered</button>
+      <button class="widget-btn pipe-ex-btn" data-ex="2" onclick="pipeSetExample(2)">Hybrid Ray-Traced</button>
+    </div>
+
+    <div class="pipe-controls">
+      <div class="pipe-toggle-group">
+        <label class="pipe-toggle"><input type="checkbox" id="pipe-cb-topo" checked onchange="pipeRender()"><span class="pipe-toggle-slider"></span><span class="pipe-toggle-label">Topo Sort</span></label>
+        <label class="pipe-toggle"><input type="checkbox" id="pipe-cb-cull" checked onchange="pipeRender()"><span class="pipe-toggle-slider"></span><span class="pipe-toggle-label">Pass Culling</span></label>
+        <label class="pipe-toggle"><input type="checkbox" id="pipe-cb-barriers" onchange="pipeRender()"><span class="pipe-toggle-slider"></span><span class="pipe-toggle-label">Barriers</span></label>
+        <label class="pipe-toggle"><input type="checkbox" id="pipe-cb-async" onchange="pipeRender()"><span class="pipe-toggle-slider"></span><span class="pipe-toggle-label">Async Compute</span></label>
+        <label class="pipe-toggle"><input type="checkbox" id="pipe-cb-alias" onchange="pipeRender()"><span class="pipe-toggle-slider"></span><span class="pipe-toggle-label">Aliasing</span></label>
+      </div>
+    </div>
+
+    <!-- Minimap -->
+    <div class="pipe-minimap-wrap">
+      <div class="pipe-minimap-label">Full Pipeline <span class="pipe-minimap-hint">— click any pass to focus</span></div>
+      <div class="pipe-minimap-container">
+        <svg id="pipe-minimap" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+    </div>
+
+    <!-- Focus view -->
+    <div class="pipe-focus-wrap" id="pipe-focus-wrap">
+      <div class="pipe-focus-header" id="pipe-focus-header">
+        <span class="pipe-focus-title" id="pipe-focus-title">Select a pass above</span>
+        <span class="pipe-focus-badge" id="pipe-focus-badge"></span>
+      </div>
+      <div class="pipe-focus-body">
+        <svg id="pipe-focus-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="pipe-focus-info" id="pipe-focus-info"></div>
+        <div class="pipe-focus-resources" id="pipe-focus-resources"></div>
+      </div>
+    </div>
+
+    <div class="pipe-stats" id="pipe-stats"></div>
+    <div class="pipe-detail" id="pipe-detail"></div>
+  </div>
+</div>
+
+<style>
+.pipe-example-bar{display:flex;align-items:center;gap:.5em;margin-bottom:.6em;flex-wrap:wrap}
+.pipe-example-label{font-size:.82em;font-weight:700;opacity:.6}
+.pipe-ex-btn{font-size:.78em!important;padding:.35em .9em!important;border-radius:999px!important;font-weight:600!important}
+.pipe-ex-active{background:#8b5cf6!important;color:#fff!important;border-color:#8b5cf6!important;box-shadow:0 0 0 2px rgba(139,92,246,.25)!important}
+
+.pipe-controls{margin:.5em 0 .8em;padding:.6em .8em;border-radius:8px;background:var(--color-neutral-100,#f5f5f5);border:1px solid var(--color-neutral-200,#e5e5e5)}
+:is(.dark,.scheme-congo) .pipe-controls{background:var(--color-neutral-900);border-color:var(--color-neutral-700)}
+.pipe-toggle-group{display:flex;flex-wrap:wrap;gap:.6em .8em;align-items:center}
+.pipe-toggle{display:flex;align-items:center;gap:.45em;cursor:pointer;font-size:.82em;user-select:none}
+.pipe-toggle input{display:none}
+.pipe-toggle-slider{width:32px;height:18px;background:var(--color-neutral-300,#d1d5db);border-radius:999px;position:relative;transition:background .2s;flex-shrink:0}
+.pipe-toggle-slider::after{content:"";position:absolute;width:14px;height:14px;background:#fff;border-radius:50%;top:2px;left:2px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.pipe-toggle input:checked+.pipe-toggle-slider{background:#8b5cf6}
+.pipe-toggle input:checked+.pipe-toggle-slider::after{transform:translateX(14px)}
+:is(.dark,.scheme-congo) .pipe-toggle-slider{background:var(--color-neutral-600)}
+.pipe-toggle-label{font-weight:600;color:var(--color-neutral-700,#374151)}
+:is(.dark,.scheme-congo) .pipe-toggle-label{color:var(--color-neutral-300)}
+
+/* Minimap */
+.pipe-minimap-wrap{margin:.5em 0;border:1.5px solid var(--color-neutral-200,#e5e5e5);border-radius:10px;overflow:hidden}
+:is(.dark,.scheme-congo) .pipe-minimap-wrap{border-color:var(--color-neutral-700)}
+.pipe-minimap-label{padding:.45em .8em;font-size:.78em;font-weight:700;text-transform:uppercase;letter-spacing:.04em;opacity:.6;border-bottom:1px solid var(--color-neutral-200,#e5e5e5)}
+:is(.dark,.scheme-congo) .pipe-minimap-label{border-color:var(--color-neutral-700)}
+.pipe-minimap-hint{font-weight:400;text-transform:none;letter-spacing:normal}
+.pipe-minimap-container{overflow-x:auto;padding:.3em;-webkit-overflow-scrolling:touch}
+#pipe-minimap{display:block;min-height:120px}
+
+/* Focus view */
+.pipe-focus-wrap{margin:.7em 0;border:2px solid rgba(139,92,246,.25);border-radius:10px;overflow:hidden;background:rgba(139,92,246,.02);transition:border-color .3s}
+.pipe-focus-wrap.pipe-focus-active{border-color:rgba(139,92,246,.5)}
+:is(.dark,.scheme-congo) .pipe-focus-wrap{background:rgba(139,92,246,.05)}
+.pipe-focus-header{padding:.5em .9em;border-bottom:1px solid rgba(139,92,246,.15);display:flex;align-items:center;gap:.6em;flex-wrap:wrap}
+.pipe-focus-title{font-weight:800;font-size:1.05em}
+.pipe-focus-badge{font-size:.75em;font-weight:600;padding:.2em .6em;border-radius:999px;display:inline-block}
+.pipe-focus-body{padding:.6em}
+#pipe-focus-svg{display:block;width:100%;margin-bottom:.5em}
+.pipe-focus-info{font-size:.86em;line-height:1.65;margin-bottom:.4em}
+.pipe-focus-resources{font-size:.82em}
+
+.pipe-res-table{width:100%;border-collapse:collapse;margin:.3em 0}
+.pipe-res-table th,.pipe-res-table td{padding:.35em .6em;text-align:left;border-bottom:1px solid var(--color-neutral-200,#e5e5e5)}
+:is(.dark,.scheme-congo) .pipe-res-table th,:is(.dark,.scheme-congo) .pipe-res-table td{border-color:var(--color-neutral-700)}
+.pipe-res-table th{font-weight:700;font-size:.85em;opacity:.6;text-transform:uppercase;letter-spacing:.03em}
+.pipe-res-access{display:inline-block;padding:.15em .45em;border-radius:4px;font-size:.85em;font-weight:600;margin:.08em .1em}
+.pipe-res-read{background:rgba(59,130,246,.1);color:#3b82f6;border:1px solid rgba(59,130,246,.2)}
+.pipe-res-write{background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.2)}
+:is(.dark,.scheme-congo) .pipe-res-read{background:rgba(59,130,246,.15);color:#93c5fd}
+:is(.dark,.scheme-congo) .pipe-res-write{background:rgba(239,68,68,.15);color:#fca5a5}
+
+/* Stats */
+.pipe-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(95px,1fr));gap:.4em;margin:.6em 0;font-size:.8em}
+.pipe-stat{padding:.45em .6em;border-radius:6px;text-align:center;font-weight:600;border:1.5px solid}
+.pipe-stat-val{font-size:1.35em;font-weight:800;display:block;margin-bottom:.05em}
+.pipe-stat-lbl{font-size:.82em;opacity:.7;font-weight:500}
+
+.pipe-detail{font-size:.84em;line-height:1.65;margin:.5em 0;padding:.55em .8em;border-radius:.375rem;border-left:3px solid #8b5cf6;background:var(--color-neutral-100,#f5f5f5);min-height:1.4em}
+:is(.dark,.scheme-congo) .pipe-detail{background:var(--color-neutral-900);border-color:#8b5cf6}
+
+/* Minimap node hover */
+#pipe-minimap .mm-node{cursor:pointer}
+#pipe-minimap .mm-node:hover rect{filter:brightness(1.15)}
+</style>
+
+<script>
+(function(){
+function isDark(){return document.documentElement.classList.contains("dark")||document.documentElement.classList.contains("scheme-congo")}
+const C={
+  alive:"#22c55e",dead:"#6b7280",output:"#f59e0b",async:"#8b5cf6",
+  edge:"#3b82f6",edgeOff:"#9ca3af",barrier:"#ef4444",
+  alias:["#3b82f6","#8b5cf6","#ec4899","#f59e0b","#14b8a6","#ef4444","#22c55e","#6366f1"],
+  focusBg:function(){return isDark()?"#1e1b2e":"#faf8ff"},
+  mmBg:function(){return isDark()?"#1a1a2e":"#fafafa"},
+  text:function(){return isDark()?"#e5e7eb":"#1f2937"},
+  textMuted:function(){return isDark()?"#9ca3af":"#6b7280"},
+};
+
+/* ─── Pipeline data ─── */
+var PIPELINES=[
+  {
+    name:"Deferred + Post",
+    passes:[
+      {id:0,name:"Shadow Cascade 0",type:"raster",col:0,row:0},
+      {id:1,name:"Shadow Cascade 1",type:"raster",col:0,row:1},
+      {id:2,name:"Shadow Cascade 2",type:"raster",col:0,row:2},
+      {id:3,name:"Depth Pre-Pass",type:"raster",col:1,row:0},
+      {id:4,name:"GBuffer",type:"raster",col:2,row:1},
+      {id:5,name:"SSAO",type:"compute",col:3,row:0,canAsync:true},
+      {id:6,name:"Hi-Z Build",type:"compute",col:2,row:0,canAsync:true},
+      {id:7,name:"Light Cull",type:"compute",col:3,row:2,canAsync:true},
+      {id:8,name:"Lighting",type:"raster",col:4,row:1},
+      {id:9,name:"Volumetrics",type:"compute",col:4,row:0,canAsync:true},
+      {id:10,name:"Sky + Fog",type:"raster",col:5,row:0},
+      {id:11,name:"Translucent",type:"raster",col:5,row:1},
+      {id:12,name:"Bloom Down",type:"compute",col:6,row:0,canAsync:true},
+      {id:13,name:"Bloom Up",type:"compute",col:6,row:1,canAsync:true},
+      {id:14,name:"TAA",type:"compute",col:7,row:0},
+      {id:15,name:"DoF",type:"compute",col:7,row:1,canAsync:true},
+      {id:16,name:"Tonemap",type:"compute",col:8,row:0},
+      {id:17,name:"UI Overlay",type:"raster",col:9,row:0},
+      {id:18,name:"Debug Wire",type:"raster",col:5,row:2,dead:true}
+    ],
+    edges:[
+      {from:0,to:8,res:"ShadowMap0"},{from:1,to:8,res:"ShadowMap1"},{from:2,to:8,res:"ShadowMap2"},
+      {from:3,to:4,res:"DepthBuffer"},{from:3,to:6,res:"DepthBuffer"},
+      {from:4,to:5,res:"GBufNormals"},{from:4,to:7,res:"GBufAlbedo"},{from:4,to:8,res:"GBufAlbedo"},
+      {from:6,to:5,res:"Hi-Z"},{from:6,to:7,res:"Hi-Z"},
+      {from:5,to:8,res:"SSAO_Tex"},{from:7,to:8,res:"LightList"},
+      {from:8,to:10,res:"HDR Color"},{from:8,to:11,res:"HDR Color"},
+      {from:8,to:9,res:"HDR Color"},{from:9,to:10,res:"VolumeScatter"},
+      {from:10,to:11,res:"HDR+Sky"},{from:11,to:12,res:"HDR Final"},
+      {from:12,to:13,res:"BloomChain"},{from:13,to:14,res:"BloomTex"},
+      {from:11,to:14,res:"HDR Final"},{from:14,to:15,res:"TAA Output"},
+      {from:14,to:16,res:"TAA Output"},{from:15,to:16,res:"DoF Output"},
+      {from:16,to:17,res:"LDR Color"},
+      {from:3,to:18,res:"DepthBuffer"}
+    ],
+    outputId:17,
+    resources:[
+      {name:"ShadowMap0",fmt:"D32",size:"8 MB"},{name:"ShadowMap1",fmt:"D32",size:"8 MB"},
+      {name:"ShadowMap2",fmt:"D32",size:"4 MB"},{name:"DepthBuffer",fmt:"D32S8",size:"40 MB"},
+      {name:"GBufNormals",fmt:"RGB10A2",size:"32 MB"},{name:"GBufAlbedo",fmt:"RGBA8",size:"32 MB"},
+      {name:"Hi-Z",fmt:"R32F",size:"12 MB"},{name:"SSAO_Tex",fmt:"R8",size:"2 MB"},
+      {name:"LightList",fmt:"Buffer",size:"1 MB"},{name:"HDR Color",fmt:"RGBA16F",size:"64 MB"},
+      {name:"VolumeScatter",fmt:"RGBA16F",size:"8 MB"},{name:"HDR+Sky",fmt:"RGBA16F",size:"64 MB"},
+      {name:"HDR Final",fmt:"RGBA16F",size:"64 MB"},{name:"BloomChain",fmt:"RGBA16F",size:"16 MB"},
+      {name:"BloomTex",fmt:"RGBA16F",size:"64 MB"},{name:"TAA Output",fmt:"RGBA16F",size:"64 MB"},
+      {name:"DoF Output",fmt:"RGBA16F",size:"64 MB"},{name:"LDR Color",fmt:"RGBA8",size:"32 MB"}
+    ]
+  },
+  {
+    name:"Forward+ Clustered",
+    passes:[
+      {id:0,name:"Shadow Atlas",type:"raster",col:0,row:0},
+      {id:1,name:"Depth Pre-Pass",type:"raster",col:1,row:1},
+      {id:2,name:"Cluster Build",type:"compute",col:2,row:0,canAsync:true},
+      {id:3,name:"Light Assign",type:"compute",col:2,row:1,canAsync:true},
+      {id:4,name:"Forward Opaque",type:"raster",col:3,row:1},
+      {id:5,name:"SSAO",type:"compute",col:3,row:0,canAsync:true},
+      {id:6,name:"Sky",type:"raster",col:4,row:0},
+      {id:7,name:"Translucent",type:"raster",col:4,row:1},
+      {id:8,name:"SSR",type:"compute",col:5,row:0,canAsync:true},
+      {id:9,name:"Particle Sim",type:"compute",col:3,row:2,canAsync:true,dead:true},
+      {id:10,name:"TAA",type:"compute",col:5,row:1},
+      {id:11,name:"Bloom",type:"compute",col:6,row:0,canAsync:true},
+      {id:12,name:"Color Grade",type:"compute",col:6,row:1},
+      {id:13,name:"FXAA",type:"compute",col:7,row:0},
+      {id:14,name:"UI",type:"raster",col:7,row:1},
+      {id:15,name:"Particle Draw",type:"raster",col:4,row:2,dead:true}
+    ],
+    edges:[
+      {from:0,to:4,res:"ShadowAtlas"},{from:1,to:2,res:"DepthBuffer"},
+      {from:1,to:3,res:"DepthBuffer"},{from:1,to:4,res:"DepthBuffer"},
+      {from:1,to:5,res:"DepthBuffer"},{from:2,to:3,res:"Clusters"},
+      {from:3,to:4,res:"LightIndices"},{from:5,to:4,res:"SSAO_Tex"},
+      {from:4,to:6,res:"HDR Color"},{from:4,to:7,res:"HDR Color"},
+      {from:6,to:7,res:"HDR+Sky"},
+      {from:7,to:8,res:"HDR Final"},{from:1,to:8,res:"DepthBuffer"},
+      {from:7,to:10,res:"HDR Final"},{from:8,to:10,res:"SSR_Tex"},
+      {from:10,to:11,res:"TAA Output"},{from:10,to:12,res:"TAA Output"},
+      {from:11,to:12,res:"BloomTex"},{from:12,to:13,res:"Graded"},
+      {from:13,to:14,res:"LDR Color"},
+      {from:9,to:15,res:"ParticleBuf"}
+    ],
+    outputId:14,
+    resources:[
+      {name:"ShadowAtlas",fmt:"D32",size:"64 MB"},{name:"DepthBuffer",fmt:"D32S8",size:"40 MB"},
+      {name:"Clusters",fmt:"Buffer",size:"64 KB"},{name:"LightIndices",fmt:"Buffer",size:"256 KB"},
+      {name:"SSAO_Tex",fmt:"R8",size:"2 MB"},{name:"HDR Color",fmt:"RGBA16F",size:"64 MB"},
+      {name:"HDR+Sky",fmt:"RGBA16F",size:"64 MB"},{name:"HDR Final",fmt:"RGBA16F",size:"64 MB"},
+      {name:"SSR_Tex",fmt:"RGBA16F",size:"16 MB"},{name:"TAA Output",fmt:"RGBA16F",size:"64 MB"},
+      {name:"BloomTex",fmt:"RGBA16F",size:"16 MB"},{name:"Graded",fmt:"RGBA8",size:"32 MB"},
+      {name:"LDR Color",fmt:"RGBA8",size:"32 MB"},{name:"ParticleBuf",fmt:"Buffer",size:"1 MB"}
+    ]
+  },
+  {
+    name:"Hybrid Ray-Traced",
+    passes:[
+      {id:0,name:"TLAS Build",type:"compute",col:0,row:0,canAsync:true},
+      {id:1,name:"GBuffer",type:"raster",col:1,row:1},
+      {id:2,name:"Depth Pre-Pass",type:"raster",col:0,row:1},
+      {id:3,name:"RT Shadows",type:"compute",col:2,row:0},
+      {id:4,name:"RT Reflections",type:"compute",col:2,row:2},
+      {id:5,name:"RT AO",type:"compute",col:2,row:1,canAsync:true},
+      {id:6,name:"Denoise Shadow",type:"compute",col:3,row:0,canAsync:true},
+      {id:7,name:"Denoise Refl",type:"compute",col:3,row:2,canAsync:true},
+      {id:8,name:"Denoise AO",type:"compute",col:3,row:1,canAsync:true},
+      {id:9,name:"Lighting",type:"raster",col:4,row:1},
+      {id:10,name:"Translucent",type:"raster",col:5,row:1},
+      {id:11,name:"TAA",type:"compute",col:6,row:0},
+      {id:12,name:"Bloom",type:"compute",col:6,row:1,canAsync:true},
+      {id:13,name:"Tonemap",type:"compute",col:7,row:0},
+      {id:14,name:"UI",type:"raster",col:7,row:1},
+      {id:15,name:"Debug Probes",type:"raster",col:5,row:2,dead:true},
+      {id:16,name:"Probe Bake",type:"compute",col:4,row:2,dead:true}
+    ],
+    edges:[
+      {from:2,to:1,res:"DepthBuffer"},{from:0,to:3,res:"TLAS"},
+      {from:0,to:4,res:"TLAS"},{from:0,to:5,res:"TLAS"},
+      {from:1,to:3,res:"GBufNormals"},{from:1,to:4,res:"GBufNormals"},
+      {from:1,to:5,res:"GBufNormals"},{from:1,to:9,res:"GBufAlbedo"},
+      {from:3,to:6,res:"RawShadow"},{from:4,to:7,res:"RawRefl"},
+      {from:5,to:8,res:"RawAO"},
+      {from:6,to:9,res:"ShadowMask"},{from:7,to:9,res:"ReflTex"},
+      {from:8,to:9,res:"AO_Tex"},
+      {from:9,to:10,res:"HDR Color"},{from:10,to:11,res:"HDR Final"},
+      {from:10,to:12,res:"HDR Final"},
+      {from:11,to:13,res:"TAA Output"},{from:12,to:13,res:"BloomTex"},
+      {from:13,to:14,res:"LDR Color"},
+      {from:9,to:16,res:"Irradiance"},{from:16,to:15,res:"ProbeViz"}
+    ],
+    outputId:14,
+    resources:[
+      {name:"TLAS",fmt:"AccelStruct",size:"64 MB"},{name:"DepthBuffer",fmt:"D32S8",size:"40 MB"},
+      {name:"GBufNormals",fmt:"RGB10A2",size:"32 MB"},{name:"GBufAlbedo",fmt:"RGBA8",size:"32 MB"},
+      {name:"RawShadow",fmt:"R8",size:"32 MB"},{name:"RawRefl",fmt:"RGBA16F",size:"16 MB"},
+      {name:"RawAO",fmt:"R8",size:"8 MB"},{name:"ShadowMask",fmt:"R8",size:"32 MB"},
+      {name:"ReflTex",fmt:"RGBA16F",size:"16 MB"},{name:"AO_Tex",fmt:"R8",size:"8 MB"},
+      {name:"HDR Color",fmt:"RGBA16F",size:"64 MB"},{name:"HDR Final",fmt:"RGBA16F",size:"64 MB"},
+      {name:"TAA Output",fmt:"RGBA16F",size:"64 MB"},{name:"BloomTex",fmt:"RGBA16F",size:"16 MB"},
+      {name:"LDR Color",fmt:"RGBA8",size:"32 MB"},{name:"Irradiance",fmt:"RGBA16F",size:"1 MB"},
+      {name:"ProbeViz",fmt:"RGBA8",size:"4 MB"}
+    ]
+  }
+];
+
+/* ─── State ─── */
+var curEx=0,passes,edges,outputId,resources,selectedPass=null;
+var cachedOrder,cachedAlive,cachedBarriers,cachedAlias;
+
+function loadExample(idx){
+  curEx=idx;
+  var ex=PIPELINES[idx];
+  passes=ex.passes.map(function(p){return Object.assign({},p)});
+  edges=ex.edges.map(function(e){return Object.assign({},e)});
+  outputId=ex.outputId;
+  resources=ex.resources.map(function(r){return Object.assign({},r)});
+  selectedPass=null;
+  document.querySelectorAll('.pipe-ex-btn').forEach(function(b){
+    b.classList.toggle('pipe-ex-active',parseInt(b.dataset.ex)===idx);
+  });
+  pipeRender();
+}
+
+/* ─── Algorithms ─── */
+function getOpts(){
+  return{
+    topo:document.getElementById("pipe-cb-topo").checked,
+    cull:document.getElementById("pipe-cb-cull").checked,
+    barriers:document.getElementById("pipe-cb-barriers").checked,
+    async:document.getElementById("pipe-cb-async").checked,
+    alias:document.getElementById("pipe-cb-alias").checked
+  };
+}
+
+function topoSort(ps,es){
+  var adj={},inDeg={};
+  ps.forEach(function(p){adj[p.id]=[];inDeg[p.id]=0});
+  es.forEach(function(e){if(adj[e.from])adj[e.from].push(e.to);if(inDeg[e.to]!==undefined)inDeg[e.to]++});
+  var q=ps.filter(function(p){return inDeg[p.id]===0}).map(function(p){return p.id});
+  var order=[],i=0;
+  while(i<q.length){var c=q[i++];order.push(c);(adj[c]||[]).forEach(function(s){if(--inDeg[s]===0)q.push(s)})}
+  return order;
+}
+
+function cullPasses(order,es){
+  var alive=new Set();
+  if(order.indexOf(outputId)===-1)return alive;
+  alive.add(outputId);
+  var rev={};order.forEach(function(id){rev[id]=[]});
+  es.forEach(function(e){if(rev[e.to])rev[e.to].push(e.from)});
+  var stack=[outputId];
+  while(stack.length){var c=stack.pop();(rev[c]||[]).forEach(function(p){if(!alive.has(p)){alive.add(p);stack.push(p)}})}
+  return alive;
+}
+
+function computeBarriers(order,alive,es){
+  var st={},b=[];
+  order.filter(function(id){return alive.has(id)}).forEach(function(id){
+    es.filter(function(e){return e.to===id}).forEach(function(e){var p=st[e.res]||"UNDEFINED";if(p!=="READ"){b.push({pass:id,res:e.res,from:p,to:"READ"});st[e.res]="READ"}});
+    es.filter(function(e){return e.from===id}).forEach(function(e){var p=st[e.res]||"UNDEFINED";if(p!=="WRITE"){b.push({pass:id,res:e.res,from:p,to:"WRITE"});st[e.res]="WRITE"}});
+  });
+  return b;
+}
+
+function computeAliasing(order,alive,es){
+  var oi={};order.forEach(function(id,i){oi[id]=i});
+  var lt={};
+  es.forEach(function(e){
+    if(!alive.has(e.from)&&!alive.has(e.to))return;
+    if(!lt[e.res])lt[e.res]={first:Infinity,last:-Infinity};
+    var fi=oi[e.from]!==undefined?oi[e.from]:Infinity;
+    var ti=oi[e.to]!==undefined?oi[e.to]:-Infinity;
+    lt[e.res].first=Math.min(lt[e.res].first,fi);
+    lt[e.res].last=Math.max(lt[e.res].last,ti);
+  });
+  var rl=Object.keys(lt).sort(function(a,b){return lt[a].first-lt[b].first});
+  var blocks=[],rb={};
+  rl.forEach(function(r){
+    var l=lt[r],placed=false;
+    for(var bi=0;bi<blocks.length;bi++){if(blocks[bi].last<l.first){blocks[bi].resources.push(r);blocks[bi].last=l.last;rb[r]=bi;placed=true;break}}
+    if(!placed){rb[r]=blocks.length;blocks.push({resources:[r],first:l.first,last:l.last})}
+  });
+  var saved=rl.length>0?Math.round((1-blocks.length/rl.length)*100):0;
+  return{blocks:blocks,resBlock:rb,lifetimes:lt,saved:saved,totalRes:rl.length,totalBlocks:blocks.length};
+}
+
+/* ─── SVG helpers ─── */
+function el(tag,attrs){
+  var e=document.createElementNS("http://www.w3.org/2000/svg",tag);
+  if(attrs){Object.keys(attrs).forEach(function(k){e.setAttribute(k,attrs[k])})}
+  return e;
+}
+function svgText(x,y,str,fill,size,weight,anchor){
+  var t=el("text",{x:x,y:y,fill:fill,
+    "font-family":"ui-monospace,SFMono-Regular,monospace",
+    "font-size":size||"11","font-weight":weight||"600","text-anchor":anchor||"middle",
+    "dominant-baseline":"central","pointer-events":"none"});
+  t.textContent=str;return t;
+}
+
+/* ─── Minimap ─── */
+var MM_NW=90,MM_NH=24,MM_CG=115,MM_RG=42,MM_PAD=20;
+
+function renderMinimap(opts){
+  var svg=document.getElementById("pipe-minimap");
+  var dark=isDark();
+  var allIds=passes.map(function(p){return p.id});
+  var order=opts.topo?topoSort(passes,edges):allIds;
+  var alive=opts.cull?cullPasses(order,edges):new Set(allIds);
+  var barriers=opts.barriers?computeBarriers(order,alive,edges):[];
+  var aliasInfo=opts.alias?computeAliasing(order,alive,edges):null;
+  cachedOrder=order;cachedAlive=alive;cachedBarriers=barriers;cachedAlias=aliasInfo;
+
+  var maxCol=0,maxRow=0;
+  passes.forEach(function(p){if(p.col>maxCol)maxCol=p.col;if(p.row>maxRow)maxRow=p.row});
+  var W=MM_PAD*2+maxCol*MM_CG+MM_NW;
+  var H=MM_PAD*2+maxRow*MM_RG+MM_NH;
+  svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  /* Make minimap scrollable — set explicit width so it won't shrink */
+  svg.style.width=Math.max(W,600)+"px";
+  svg.style.minHeight=Math.max(110,H)+"px";
+  svg.innerHTML="";
+
+  svg.append(el("rect",{x:0,y:0,width:W,height:H,fill:C.mmBg(),rx:6}));
+
+  passes.forEach(function(p){p.mx=MM_PAD+p.col*MM_CG;p.my=MM_PAD+p.row*MM_RG});
+
+  /* edges */
+  edges.forEach(function(e){
+    var sp=passes.find(function(p){return p.id===e.from});
+    var dp=passes.find(function(p){return p.id===e.to});
+    if(!sp||!dp)return;
+    var both=alive.has(e.from)&&alive.has(e.to);
+    var sx=sp.mx+MM_NW,sy=sp.my+MM_NH/2,dx=dp.mx,dy=dp.my+MM_NH/2;
+    var cx1=sx+(dx-sx)*.4,cx2=sx+(dx-sx)*.6;
+    var attrs={d:"M"+sx+","+sy+" C"+cx1+","+sy+" "+cx2+","+dy+" "+dx+","+dy,
+      fill:"none",stroke:both?C.edge:C.edgeOff,"stroke-width":both?"1.5":"1",
+      opacity:both?"0.45":"0.12"};
+    if(!both)attrs["stroke-dasharray"]="3 2";
+    svg.append(el("path",attrs));
+  });
+
+  /* barrier ticks */
+  if(opts.barriers){
+    var bc={};barriers.forEach(function(b){bc[b.pass]=(bc[b.pass]||0)+1});
+    Object.keys(bc).forEach(function(pid){
+      var p=passes.find(function(pp){return pp.id===+pid});
+      if(!p||!alive.has(p.id))return;
+      svg.append(el("line",{x1:p.mx-4,y1:p.my,x2:p.mx-4,y2:p.my+MM_NH,
+        stroke:C.barrier,"stroke-width":"2",opacity:"0.6","stroke-linecap":"round"}));
+    });
+  }
+
+  /* nodes */
+  passes.forEach(function(p){
+    var isAlive=alive.has(p.id),isOut=p.id===outputId,isAsync=opts.async&&p.canAsync;
+    var isSel=selectedPass===p.id;
+    var fill=isOut?C.output:isAsync?C.async:isAlive?C.alive:C.dead;
+    var g=el("g",{"class":"mm-node"});
+
+    /* selection ring */
+    if(isSel){
+      svg.append(el("rect",{x:p.mx-3,y:p.my-3,width:MM_NW+6,height:MM_NH+6,rx:7,
+        fill:"none",stroke:"#fff","stroke-width":"2.5",opacity:"0.85"}));
+    }
+
+    var strokeCol=isOut?"#d97706":isAsync?"#7c3aed":isAlive?"#16a34a":"#4b5563";
+    g.append(el("rect",{x:p.mx,y:p.my,width:MM_NW,height:MM_NH,rx:5,
+      fill:fill,opacity:isAlive?"1":"0.3",stroke:isSel?"#fff":strokeCol,"stroke-width":isSel?"2":"1"}));
+
+    var maxChars=11;
+    var label=p.name.length>maxChars?p.name.slice(0,maxChars-1)+"\u2026":p.name;
+    var t=svgText(p.mx+MM_NW/2,p.my+MM_NH/2,isAlive?label:label+" \u2717","#fff","9","600");
+    t.setAttribute("opacity",isAlive?"1":"0.4");
+    g.append(t);
+
+    /* alias color bar */
+    if(opts.alias&&aliasInfo){
+      edges.filter(function(ee){return ee.from===p.id&&alive.has(p.id)}).forEach(function(ee){
+        var bi=aliasInfo.resBlock[ee.res];
+        if(bi!==undefined&&aliasInfo.blocks[bi].resources.length>1){
+          svg.append(el("rect",{x:p.mx,y:p.my+MM_NH+1,width:MM_NW,height:3,rx:1,
+            fill:C.alias[bi%C.alias.length],opacity:"0.5"}));
+        }
+      });
+    }
+
+    g.addEventListener("click",function(){
+      selectedPass=(selectedPass===p.id)?null:p.id;
+      pipeRender();
+    });
+    svg.append(g);
+  });
+}
+
+/* ─── Focus view ─── */
+var F_NW=155,F_NH=42,F_CG=210,F_PAD=25;
+
+function renderFocus(opts){
+  var wrap=document.getElementById("pipe-focus-wrap");
+  var svg=document.getElementById("pipe-focus-svg");
+  var titleEl=document.getElementById("pipe-focus-title");
+  var badgeEl=document.getElementById("pipe-focus-badge");
+  var infoEl=document.getElementById("pipe-focus-info");
+  var resEl=document.getElementById("pipe-focus-resources");
+  var dark=isDark();
+
+  if(selectedPass===null){
+    wrap.classList.remove("pipe-focus-active");
+    titleEl.textContent="Click a pass in the minimap above";
+    badgeEl.textContent="";badgeEl.style.cssText="";
+    svg.setAttribute("viewBox","0 0 600 56");
+    svg.style.minHeight="56px";
+    svg.innerHTML="";
+    svg.append(el("rect",{x:0,y:0,width:600,height:56,fill:C.focusBg(),rx:6}));
+    var hint=svgText(300,28,"\u2190 Select a pass to see its neighborhood",C.textMuted(),"13","500");
+    hint.setAttribute("font-family","system-ui,sans-serif");
+    svg.append(hint);
+    infoEl.innerHTML="";resEl.innerHTML="";
+    return;
+  }
+
+  wrap.classList.add("pipe-focus-active");
+  var p=passes.find(function(pp){return pp.id===selectedPass});
+  var isAlive=cachedAlive.has(p.id);
+  var isOut=p.id===outputId;
+  var isAsync=opts.async&&p.canAsync;
+
+  titleEl.textContent=p.name;
+  var typeCol=isOut?C.output:isAsync?C.async:isAlive?C.alive:C.dead;
+  var badgeText=(!isAlive?"CULLED":isAsync?"ASYNC COMPUTE":p.type==="compute"?"COMPUTE":"RASTER");
+  if(isOut)badgeText+=" \u00B7 OUTPUT";
+  badgeEl.textContent=badgeText;
+  badgeEl.style.cssText="background:"+typeCol+";color:#fff";
+
+  var inEdges=edges.filter(function(e){return e.to===p.id});
+  var outEdges=edges.filter(function(e){return e.from===p.id});
+  var predIds=[],succIds=[];
+  inEdges.forEach(function(e){if(predIds.indexOf(e.from)===-1)predIds.push(e.from)});
+  outEdges.forEach(function(e){if(succIds.indexOf(e.to)===-1)succIds.push(e.to)});
+
+  var maxNeighborRows=Math.max(predIds.length,succIds.length,1);
+  var F_RG=56;
+  var W=F_PAD*2+2*F_CG+F_NW;
+  var contentH=Math.max((maxNeighborRows-1)*F_RG+F_NH,F_NH+20);
+  var H=F_PAD*2+contentH+16;
+  svg.setAttribute("viewBox","0 0 "+W+" "+H);
+  svg.style.minHeight=Math.min(H,340)+"px";
+  svg.innerHTML="";
+
+  svg.append(el("rect",{x:0,y:0,width:W,height:H,fill:C.focusBg(),rx:8}));
+
+  var centerX=F_PAD+F_CG,centerY=F_PAD+contentH/2-F_NH/2;
+
+  function positionColumn(ids,x){
+    var totalH=(ids.length-1)*F_RG;
+    return ids.map(function(id,i){return{id:id,x:x,y:F_PAD+contentH/2-totalH/2-F_NH/2+i*F_RG}});
+  }
+  var predPositions=positionColumn(predIds,F_PAD);
+  var succPositions=positionColumn(succIds,F_PAD+2*F_CG);
+
+  /* column labels */
+  if(predIds.length>0){
+    var cl1=svgText(F_PAD+F_NW/2,H-6,"reads from",C.textMuted(),"10","500");
+    cl1.setAttribute("font-family","system-ui,sans-serif");svg.append(cl1);
+  }
+  var cl2=svgText(centerX+F_NW/2,H-6,"selected","#8b5cf6","10","700");
+  cl2.setAttribute("font-family","system-ui,sans-serif");svg.append(cl2);
+  if(succIds.length>0){
+    var cl3=svgText(F_PAD+2*F_CG+F_NW/2,H-6,"writes to",C.textMuted(),"10","500");
+    cl3.setAttribute("font-family","system-ui,sans-serif");svg.append(cl3);
+  }
+
+  /* draw edges */
+  function drawEdge(sx,sy,dx,dy,label,edgeAlive){
+    var cx1=sx+(dx-sx)*.35,cx2=sx+(dx-sx)*.65;
+    var attrs={d:"M"+sx+","+sy+" C"+cx1+","+sy+" "+cx2+","+dy+" "+dx+","+dy,
+      fill:"none",stroke:edgeAlive?C.edge:C.edgeOff,"stroke-width":edgeAlive?"2.5":"1.5",
+      opacity:edgeAlive?"0.65":"0.2"};
+    if(!edgeAlive)attrs["stroke-dasharray"]="4 3";
+    svg.append(el("path",attrs));
+    /* arrow */
+    svg.append(el("polygon",{
+      points:dx+","+dy+" "+(dx-7)+","+(dy-4)+" "+(dx-7)+","+(dy+4),
+      fill:edgeAlive?C.edge:C.edgeOff,opacity:edgeAlive?"0.65":"0.2"}));
+    /* label */
+    var lx=(sx+dx)/2,ly=(sy+dy)/2-10;
+    var lt=svgText(lx,ly,label,edgeAlive?(dark?"#93c5fd":"#2563eb"):C.edgeOff,"10","500");
+    lt.setAttribute("font-family","system-ui,sans-serif");
+    lt.setAttribute("opacity",edgeAlive?"0.85":"0.35");
+    svg.append(lt);
+  }
+
+  predPositions.forEach(function(pp){
+    var resLabels=inEdges.filter(function(e){return e.from===pp.id}).map(function(e){return e.res});
+    var bothAlive=cachedAlive.has(pp.id)&&isAlive;
+    drawEdge(pp.x+F_NW,pp.y+F_NH/2,centerX,centerY+F_NH/2,resLabels.join(", "),bothAlive);
+  });
+  succPositions.forEach(function(sp){
+    var resLabels=outEdges.filter(function(e){return e.to===sp.id}).map(function(e){return e.res});
+    var bothAlive=isAlive&&cachedAlive.has(sp.id);
+    drawEdge(centerX+F_NW,centerY+F_NH/2,sp.x,sp.y+F_NH/2,resLabels.join(", "),bothAlive);
+  });
+
+  /* draw nodes */
+  function drawNode(x,y,nodePass,isCenter){
+    var na=cachedAlive.has(nodePass.id),no=nodePass.id===outputId,nas=opts.async&&nodePass.canAsync;
+    var fill=no?C.output:nas?C.async:na?C.alive:C.dead;
+    var g=el("g",{style:"cursor:pointer"});
+    /* shadow */
+    if(na)svg.append(el("rect",{x:x+2,y:y+2,width:F_NW,height:F_NH,rx:8,fill:"rgba(0,0,0,.1)"}));
+    /* selection ring for center */
+    if(isCenter){
+      svg.append(el("rect",{x:x-4,y:y-4,width:F_NW+8,height:F_NH+8,rx:11,
+        fill:"none",stroke:"#8b5cf6","stroke-width":"2.5","stroke-dasharray":"5 3",opacity:"0.6"}));
+    }
+    var strokeCol=no?"#d97706":nas?"#7c3aed":na?"#16a34a":"#4b5563";
+    g.append(el("rect",{x:x,y:y,width:F_NW,height:F_NH,rx:8,
+      fill:fill,opacity:na?"1":"0.35",stroke:isCenter?"#fff":strokeCol,"stroke-width":isCenter?"2.5":"1.5"}));
+    var nameStr=na?nodePass.name:nodePass.name+" \u2717";
+    var sz=nameStr.length>16?"10":nameStr.length>12?"11.5":"13";
+    g.append(svgText(x+F_NW/2,y+F_NH/2,nameStr,"#fff",sz,"700"));
+    /* type chip */
+    if(na){
+      var chip=nodePass.type==="compute"?"C":"R";
+      svg.append(el("circle",{cx:x+F_NW-1,cy:y-1,r:9,fill:dark?"#1a1a2e":"#fff",stroke:fill,"stroke-width":"1.5"}));
+      svg.append(svgText(x+F_NW-1,y-1,chip,fill,"9","700"));
+    }
+    if(!isCenter){
+      g.addEventListener("click",function(){selectedPass=nodePass.id;pipeRender()});
+    }
+    svg.append(g);
+  }
+
+  predPositions.forEach(function(pp){drawNode(pp.x,pp.y,passes.find(function(n){return n.id===pp.id}),false)});
+  drawNode(centerX,centerY,p,true);
+  succPositions.forEach(function(sp){drawNode(sp.x,sp.y,passes.find(function(n){return n.id===sp.id}),false)});
+
+  /* ─── Info text ─── */
+  var depCount=inEdges.filter(function(e){return cachedAlive.has(e.from)}).length;
+  var consCount=outEdges.filter(function(e){return cachedAlive.has(e.to)}).length;
+  var info="<strong>"+depCount+" input"+(depCount!==1?"s":"")+"</strong> (implicit via <code>read()</code>) &middot; <strong>"+consCount+" output"+(consCount!==1?"s":"")+"</strong> (implicit via <code>write()</code>)";
+  if(!isAlive)info+=" &middot; <span style='color:"+C.dead+";font-weight:700'>CULLED</span> &mdash; no path to output";
+  if(opts.barriers){
+    var pb=cachedBarriers.filter(function(b){return b.pass===p.id});
+    if(pb.length>0)info+="<br><span style='color:"+C.barrier+"'>\u26A0 "+pb.length+" barrier"+(pb.length>1?"s":"")+"</span>: "+pb.map(function(b){return"<code>"+b.res+"</code> "+b.from+"\u2192"+b.to}).join(", ");
+  }
+  infoEl.innerHTML=info;
+
+  /* ─── Resource table ─── */
+  var allRes=[];
+  inEdges.forEach(function(e){if(allRes.indexOf(e.res)===-1)allRes.push(e.res)});
+  outEdges.forEach(function(e){if(allRes.indexOf(e.res)===-1)allRes.push(e.res)});
+
+  if(allRes.length>0){
+    var rows="";
+    allRes.forEach(function(rn){
+      var ri=resources.find(function(r){return r.name===rn});
+      var isRead=inEdges.some(function(e){return e.res===rn});
+      var isWrite=outEdges.some(function(e){return e.res===rn});
+      var aliasColor=(opts.alias&&cachedAlias&&cachedAlias.resBlock[rn]!==undefined)?C.alias[cachedAlias.resBlock[rn]%C.alias.length]:null;
+      var aliasTag=aliasColor?"<span style='display:inline-block;width:10px;height:10px;border-radius:2px;background:"+aliasColor+";margin-right:.4em;vertical-align:middle' title='Shares memory block'></span>":"";
+      rows+="<tr><td>"+aliasTag+"<strong>"+rn+"</strong></td><td><code>"+(ri?ri.fmt:"?")+"</code></td><td>"+(ri?ri.size:"")+"</td><td>"+(isRead?"<span class='pipe-res-access pipe-res-read'>READ</span>":"")+(isWrite?"<span class='pipe-res-access pipe-res-write'>WRITE</span>":"")+"</td></tr>";
+    });
+    resEl.innerHTML="<table class='pipe-res-table'><thead><tr><th>Resource</th><th>Format</th><th>Size</th><th>Access</th></tr></thead><tbody>"+rows+"</tbody></table>";
+  }else{
+    resEl.innerHTML="";
+  }
+}
+
+/* ─── Stats + detail ─── */
+function renderStats(opts){
+  var statsDiv=document.getElementById("pipe-stats");
+  var detailDiv=document.getElementById("pipe-detail");
+  var totalPasses=passes.length;
+  var alivePasses=0;passes.forEach(function(p){if(cachedAlive.has(p.id))alivePasses++});
+  var culledPasses=totalPasses-alivePasses;
+  var implicitEdges=0;edges.forEach(function(e){if(cachedAlive.has(e.from)&&cachedAlive.has(e.to))implicitEdges++});
+  var asyncPasses=0;if(opts.async)passes.forEach(function(p){if(p.canAsync&&cachedAlive.has(p.id))asyncPasses++});
+
+  var s="<div class='pipe-stat' style='border-color:"+C.alive+";color:"+C.alive+"'><span class='pipe-stat-val'>"+alivePasses+"</span><span class='pipe-stat-lbl'>Active</span></div>";
+  if(opts.cull)s+="<div class='pipe-stat' style='border-color:"+C.dead+";color:"+C.dead+"'><span class='pipe-stat-val'>"+culledPasses+"</span><span class='pipe-stat-lbl'>Culled</span></div>";
+  s+="<div class='pipe-stat' style='border-color:"+C.edge+";color:"+C.edge+"'><span class='pipe-stat-val'>"+implicitEdges+"</span><span class='pipe-stat-lbl'>Implicit Deps</span></div>";
+  if(opts.barriers)s+="<div class='pipe-stat' style='border-color:"+C.barrier+";color:"+C.barrier+"'><span class='pipe-stat-val'>"+cachedBarriers.length+"</span><span class='pipe-stat-lbl'>Barriers</span></div>";
+  if(opts.async)s+="<div class='pipe-stat' style='border-color:"+C.async+";color:"+C.async+"'><span class='pipe-stat-val'>"+asyncPasses+"</span><span class='pipe-stat-lbl'>Async</span></div>";
+  if(opts.alias&&cachedAlias)s+="<div class='pipe-stat' style='border-color:#14b8a6;color:#14b8a6'><span class='pipe-stat-val'>"+cachedAlias.saved+"%</span><span class='pipe-stat-lbl'>VRAM Saved</span></div>";
+  statsDiv.innerHTML=s;
+
+  var feats=[];
+  if(opts.topo)feats.push("topologically sorted");
+  if(opts.cull)feats.push(culledPasses+" passes culled");
+  if(opts.barriers)feats.push(cachedBarriers.length+" barriers auto-inserted");
+  if(opts.async)feats.push(asyncPasses+" async-eligible passes");
+  if(opts.alias&&cachedAlias)feats.push(cachedAlias.saved+"% VRAM saved via aliasing");
+
+  if(feats.length===0){
+    detailDiv.innerHTML="<strong>All features off.</strong> This is what you'd manage by hand \u2014 "+totalPasses+" passes, "+implicitEdges+" resource dependencies, every barrier and memory decision manual. Toggle features above to see the compiler work.";
+  }else{
+    detailDiv.innerHTML="<strong>Compiler output:</strong> "+feats.join(" \u00B7 ")+". Every dependency was inferred from <code>read()</code>/<code>write()</code> calls \u2014 click a pass in the minimap to see exactly what's implicit.";
+  }
+}
+
+/* ─── Main render ─── */
+function render(){
+  var opts=getOpts();
+  renderMinimap(opts);
+  renderFocus(opts);
+  renderStats(opts);
+}
+
+window.pipeSetExample=function(idx){loadExample(idx)};
+window.pipeRender=render;
+new MutationObserver(function(){render()}).observe(document.documentElement,{attributes:true,attributeFilter:["class"]});
+loadExample(0);
+})();
+</script>
