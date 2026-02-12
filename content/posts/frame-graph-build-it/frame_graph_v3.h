@@ -109,7 +109,6 @@ public:
         auto& ver = entries_[h.index].versions.back();
         if (ver.writerPass != UINT32_MAX) {
             passes_[passIdx].dependsOn.push_back(ver.writerPass);
-            passes_[ver.writerPass].successors.push_back(passIdx);
         }
         ver.readerPasses.push_back(passIdx);
         passes_[passIdx].reads.push_back(h);
@@ -133,7 +132,7 @@ public:
     // ── v3: compile — builds the execution plan + allocates memory ──
     struct CompiledPlan {
         std::vector<uint32_t> sorted;
-        std::vector<std::vector<uint32_t>> mapping;
+        std::vector<uint32_t> mapping;   // mapping[virtualIdx] → physicalBlock
     };
 
     CompiledPlan compile() {
@@ -156,6 +155,10 @@ public:
     // ── v3: execute — just records GPU commands ───────────────
     void execute() {
         auto plan = compile();
+
+        // In a real renderer: bind physical memory blocks using plan.mapping here.
+        // Each virtual handle maps to an aliased physical slot decided at compile time.
+        // Our MVP prints the mapping but skips actual GPU binding.
 
         printf("[6] Executing (with automatic barriers):\n");
         for (uint32_t idx : plan.sorted) {

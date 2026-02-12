@@ -15,10 +15,6 @@ showTableOfContents: false
 📖 <strong>Part III of III.</strong>&ensp; <a href="../frame-graph-theory/">Theory</a> → <a href="../frame-graph-build-it/">Build It</a> → <em>Production Engines</em>
 </div>
 
-<div style="border-left:4px solid #6366f1;background:linear-gradient(135deg,rgba(99,102,241,.06),transparent);border-radius:0 10px 10px 0;padding:1em 1.3em;margin:1em 0;font-size:.95em;font-style:italic;line-height:1.55">
-How UE5 and Frostbite implement the same ideas at scale — what they added, what they compromised, and where they still differ.
-</div>
-
 [Part II](/posts/frame-graph-build-it/) left us with a working frame graph — automatic barriers, pass culling, and memory aliasing in ~300 lines of C++. That's a solid MVP, but production engines face problems we didn't: parallel command recording, subpass merging, async compute scheduling, and managing thousands of passes across legacy codebases. This article examines how UE5 and Frostbite solved those problems, then maps out the path from MVP to production.
 
 ---

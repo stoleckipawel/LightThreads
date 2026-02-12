@@ -85,7 +85,6 @@ public:
         auto& ver = entries_[h.index].versions.back();
         if (ver.writerPass != UINT32_MAX) {
             passes_[passIdx].dependsOn.push_back(ver.writerPass);
-            passes_[ver.writerPass].successors.push_back(passIdx);
         }
         ver.readerPasses.push_back(passIdx);
         passes_[passIdx].reads.push_back(h);

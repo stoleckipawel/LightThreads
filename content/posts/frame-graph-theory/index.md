@@ -248,7 +248,7 @@ When you declare a resource, the graph needs to know one thing: **does it live i
     <div style="padding:.7em .9em;font-size:.88em;line-height:1.7;">
       <strong>Lifetime:</strong> single frame<br>
       <strong>Declared as:</strong> description (size, format)<br>
-      <strong>GPU memory:</strong> aliasing planned at compile, physically backed at execute<br>
+      <strong>GPU memory:</strong> allocated and aliased at compile<br>
       <strong>Aliasable:</strong> <span style="color:#22c55e;font-weight:700;">Yes</span> — non-overlapping lifetimes share physical memory<br>
       <strong>Examples:</strong> GBuffer MRTs, SSAO scratch, bloom scratch
     </div>
@@ -282,7 +282,7 @@ Aliasing requires **placed resources** — you allocate a large `ID3D12Heap` (or
 
 ## ⚙️ The Compile Step
 
-The declared DAG goes in, an optimized execution plan comes out. Three things happen — all near-linear, all in microseconds for a typical frame.
+The declared DAG goes in, an optimized execution plan comes out. Four things happen — all near-linear, all in microseconds for a typical frame.
 
 <div class="diagram-box">
   <div class="db-title">🔍 COMPILE — turning the DAG into a plan</div>
@@ -693,9 +693,9 @@ You've now seen every piece the compiler works with — topological sorting, pas
 <strong>This is the trade-off at the heart of every render graph.</strong> Dependencies become <em>implicit</em> — the graph infers ordering from data flow, which means you never declare "pass A must run before pass B." That's powerful: the compiler can reorder, cull, and parallelize freely. But it also means <strong>dependencies are hidden</strong>. Miss a <code>read()</code> call and the graph silently reorders two passes that shouldn't overlap. Add an assert and you'll catch the <em>symptom</em> — but not the missing edge that caused it.
 </div>
 
-The render graph isn't a safety net — it's a tool that requires discipline. You still need to build the graph in the right order, track what modifies what, and validate that every resource dependency is explicitly declared. **But here's the upside:** because every dependency flows through the graph, you can build tools to **visualize** the entire pipeline — something that's impossible when barriers and ordering are scattered across hand-written render code.
+Since the frame graph is a DAG, every dependency is explicitly encoded in the structure. That means you can build tools to **visualize** the entire pipeline — every pass, every resource edge, every implicit ordering decision — something that's impossible when barriers and ordering are scattered across hand-written render code.
 
-The explorer below is a production-scale graph. Toggle each compiler feature on and off to see exactly what it contributes. Click any pass to inspect its implicit dependencies — every edge was inferred, not hand-written.
+The explorer below is a production-scale graph. Toggle each compiler feature on and off to see exactly what it contributes. Click any pass to inspect its dependencies — every edge was inferred from `read()` and `write()` calls, not hand-written.
 
 {{< interactive-full-pipeline >}}
 

@@ -74,7 +74,7 @@ These three ideas produce a natural pipeline — declare your intent, let the co
       ├ <strong>alias</strong> — map virtual → physical<br>
       └ <strong>barrier</strong> — emit transitions
       <div style="margin-top:.6em;padding:.35em .6em;border-radius:5px;background:rgba(139,92,246,.08);font-size:.82em;line-height:1.4;border:1px solid rgba(139,92,246,.12);">
-        Aliasing <strong>planned</strong> here — non-overlapping lifetimes will share the same heap.
+        Aliasing and allocation <strong>happen</strong> here — non-overlapping lifetimes share the same heap, physical memory is bound before execute.
       </div>
     </div>
   </div>
@@ -82,7 +82,7 @@ These three ideas produce a natural pipeline — declare your intent, let the co
     <div class="dph-title" style="color:#22c55e">③ Execute <span style="font-weight:400;font-size:.75em;opacity:.7;">GPU</span></div>
     <div class="dph-body">
       for each pass in sorted order:<br>
-      ├ insert pre-computed barriers<br>
+      ├ insert automatic barriers<br>
       └ call execute lambda<br>
       &nbsp;&nbsp;→ draw / dispatch / copy
       <div style="margin-top:.6em;padding:.35em .6em;border-radius:5px;background:rgba(34,197,94,.08);font-size:.82em;line-height:1.4;border:1px solid rgba(34,197,94,.12);">
@@ -337,7 +337,7 @@ A real frame needs <strong>dozens of these</strong>. Miss one → rendering corr
 
 ### 🧩 Putting it together — v1 → v2 diff
 
-We need four new pieces: (1) resource versioning with read/write tracking, (2) adjacency list for the DAG, (3) topological sort, (4) pass culling, and (5) barrier insertion. Additions marked with `// NEW v2` in the source:
+We need five new pieces: (1) resource versioning with read/write tracking, (2) adjacency list for the DAG, (3) topological sort, (4) pass culling, and (5) barrier insertion. Additions marked with `// NEW v2` in the source:
 
 {{< code-diff title="v1 → v2 — Key structural changes" >}}
 @@ RenderPass struct @@
@@ -383,7 +383,7 @@ Full updated source:
 
 That's three of the four intro promises delivered — automatic ordering, barrier insertion, and dead-pass culling. The only piece missing: resources still live for the entire frame. Version 3 fixes that with lifetime analysis and memory aliasing.
 
-UE5's RDG does the same thing. When you call `FRDGBuilder::AddPass`, RDG builds the dependency graph from your declared reads/writes, topologically sorts it, culls dead passes, and inserts barriers — all before recording a single GPU command. The migration to RDG is ongoing — some parts of UE5's renderer still use legacy `FRHICommandList` calls outside the graph, requiring manual barriers at the RDG boundary. Epic is actively moving more passes into the graph with each release. More on that in [Part III](/posts/frame-graph-production/).
+UE5's RDG does the same thing. When you call `FRDGBuilder::AddPass`, RDG builds the dependency graph from your declared reads/writes, topologically sorts it, culls dead passes, and inserts barriers — all before recording a single GPU command.
 
 ---
 
@@ -391,7 +391,7 @@ UE5's RDG does the same thing. When you call `FRDGBuilder::AddPass`, RDG builds 
 
 V2 gives us ordering, culling, and barriers — but every transient resource lives for the entire frame. A 1080p deferred pipeline allocates ~52 MB of transient textures that are each used for only 2–3 passes. If their lifetimes don't overlap, they can share physical memory. That's aliasing, and it typically saves 30–50% VRAM.
 
-The algorithm has three steps. First, **scan lifetimes**: walk the sorted pass list and record each transient resource's `firstUsePass` and `lastUsePass` (imported resources are excluded — they're externally owned). Second, **track refcounts**: increment at first use, decrement at last use; when a resource's refcount hits zero, its physical memory becomes available. Third, **free-list scan**: sort resources by first-use, then greedily try to fit each one into an existing physical block that's compatible (same memory type, large enough, available after the previous user finished). Fit → reuse. No fit → allocate a new block. This is greedy interval-coloring.
+The algorithm has two steps. First, **scan lifetimes**: walk the sorted pass list and record each transient resource's `firstUse` and `lastUse` pass indices (imported resources are excluded — they're externally owned). Second, **free-list scan**: sort resources by first-use, then greedily try to fit each one into an existing physical block that's compatible (same memory type, large enough, and whose last user finished before this resource's first use). Fit → reuse. No fit → allocate a new block. This is greedy interval-coloring.
 
 Without aliasing, every transient resource is a **committed allocation** — its own chunk of VRAM from creation to end of frame, even if it's only used for 2–3 passes. Here's what that looks like for six transient resources at 1080p:
 
@@ -645,7 +645,7 @@ Three iterations produced a single `FrameGraph` class. Here's what it does every
     <div style="font-weight:800;font-size:.88em;margin-bottom:.5em;color:#22c55e;">③ Execute</div>
     <div style="font-size:.84em;line-height:1.6;opacity:.85;">
       Walk sorted, living passes:<br>
-      • insert pre-computed barriers<br>
+      • insert automatic barriers<br>
       • call execute lambda<br>
       • resources already aliased &amp; bound
     </div>
@@ -669,9 +669,9 @@ Three iterations produced a single `FrameGraph` class. Here's what it does every
   <tbody>
     <tr><td style="padding:.4em .8em;font-weight:600;">Topological sort</td><td style="padding:.4em .8em;text-align:center;font-family:ui-monospace,monospace;color:#8b5cf6">O(V + E)</td><td style="padding:.4em .8em;font-size:.9em;opacity:.8">Kahn's — passes + edges</td></tr>
     <tr style="background:rgba(127,127,127,.04)"><td style="padding:.4em .8em;font-weight:600;">Pass culling</td><td style="padding:.4em .8em;text-align:center;font-family:ui-monospace,monospace;color:#8b5cf6">O(V + E)</td><td style="padding:.4em .8em;font-size:.9em;opacity:.8">Backward reachability from output</td></tr>
-    <tr><td style="padding:.4em .8em;font-weight:600;">Lifetime scan</td><td style="padding:.4em .8em;text-align:center;font-family:ui-monospace,monospace;color:#8b5cf6">O(V)</td><td style="padding:.4em .8em;font-size:.9em;opacity:.8">Single pass over sorted list</td></tr>
+    <tr><td style="padding:.4em .8em;font-weight:600;">Lifetime scan</td><td style="padding:.4em .8em;text-align:center;font-family:ui-monospace,monospace;color:#8b5cf6">O(V + E)</td><td style="padding:.4em .8em;font-size:.9em;opacity:.8">Walk sorted passes and their read/write edges</td></tr>
     <tr style="background:rgba(127,127,127,.04)"><td style="padding:.4em .8em;font-weight:600;">Aliasing</td><td style="padding:.4em .8em;text-align:center;font-family:ui-monospace,monospace;color:#8b5cf6">O(R log R)</td><td style="padding:.4em .8em;font-size:.9em;opacity:.8">Sort by first-use, greedy free-list scan</td></tr>
-    <tr><td style="padding:.4em .8em;font-weight:600;">Barrier computation</td><td style="padding:.4em .8em;text-align:center;font-family:ui-monospace,monospace;color:#8b5cf6">O(V)</td><td style="padding:.4em .8em;font-size:.9em;opacity:.8">Linear scan with state lookup</td></tr>
+    <tr><td style="padding:.4em .8em;font-weight:600;">Barrier computation</td><td style="padding:.4em .8em;text-align:center;font-family:ui-monospace,monospace;color:#8b5cf6">O(V + E)</td><td style="padding:.4em .8em;font-size:.9em;opacity:.8">Walk passes and their read/write edges with state lookup</td></tr>
   </tbody>
 </table>
 </div>
