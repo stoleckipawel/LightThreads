@@ -208,15 +208,15 @@ Each frame starts on the CPU. You register passes, describe the resources they n
     <div class="diagram-pipeline">
       <div class="dp-stage">
         <div class="dp-title">ADD PASSES</div>
-        <ul><li><code>addPass(setup, execute)</code></li><li>setup runs now, execute runs later</li></ul>
+        <ul><li><code>addPass(setup, execute)</code></li></ul>
       </div>
       <div class="dp-stage">
         <div class="dp-title">DECLARE RESOURCES</div>
-        <ul><li><code>create({1920,1080, RGBA8})</code></li><li>returns a handle — no allocation yet</li></ul>
+        <ul><li><code>create({1920,1080, RGBA8})</code></li></ul>
       </div>
       <div class="dp-stage">
         <div class="dp-title">WIRE DEPENDENCIES</div>
-        <ul><li><code>read(h)</code> / <code>write(h)</code></li><li>these edges form the DAG</li></ul>
+        <ul><li><code>read(h)</code> / <code>write(h)</code></li></ul>
       </div>
     </div>
     <div style="text-align:center;font-size:.82em;opacity:.6;margin-top:.3em">CPU only — the GPU is idle during this phase</div>
@@ -272,7 +272,25 @@ Aliasing is one of the graph's biggest VRAM wins — but it has sharp edges:
   <div class="dw-row"><div class="dw-label">Imported res</div><div>survive across frames — <strong>never alias</strong>. Only transient resources qualify.</div></div>
 </div>
 
-Aliasing requires **placed resources** — you allocate a large `ID3D12Heap` (or `VkDeviceMemory`), then bind multiple resources at different offsets within it. Non-overlapping lifetimes land on the same physical memory. Production engines refine this further with **power-of-two bucketing** (reducing heap fragmentation) and **cross-frame pooling** (keeping heaps alive across frames so allocation cost amortizes to near zero). [Part III](/posts/frame-graph-production/) covers how each engine handles these.
+Aliasing requires **placed resources** — you allocate a large `ID3D12Heap` (or `VkDeviceMemory`), then bind multiple resources at different offsets within it. Non-overlapping lifetimes land on the same physical memory.
+
+<div class="fg-grid-stagger" style="display:grid;grid-template-columns:1fr 1fr;gap:1em;margin:1.2em 0;">
+  <div class="fg-hoverable" style="border-radius:10px;border:1.5px solid rgba(139,92,246,.25);overflow:hidden;">
+    <div style="padding:.6em .9em;font-weight:800;font-size:.88em;background:rgba(139,92,246,.08);border-bottom:1px solid rgba(139,92,246,.12);color:#8b5cf6;">🪣 Power-of-two bucketing</div>
+    <div style="padding:.7em .9em;font-size:.88em;line-height:1.65;">
+      Instead of allocating exact sizes, round up to the nearest power of two (4 MB, 8 MB, 16 MB…). Fewer distinct sizes → heaps are <strong>reusable across resources</strong> with different dimensions, reducing fragmentation.
+    </div>
+  </div>
+  <div class="fg-hoverable" style="border-radius:10px;border:1.5px solid rgba(34,197,94,.25);overflow:hidden;">
+    <div style="padding:.6em .9em;font-weight:800;font-size:.88em;background:rgba(34,197,94,.08);border-bottom:1px solid rgba(34,197,94,.12);color:#22c55e;">♻️ Cross-frame pooling</div>
+    <div style="padding:.7em .9em;font-size:.88em;line-height:1.65;">
+      Don't destroy heaps at frame end — keep them in a pool. Next frame's <code>compile()</code> pulls from the pool instead of calling the allocator. Allocation cost amortizes to <strong>near zero</strong> after the first few frames.
+    </div>
+  </div>
+</div>
+<div style="text-align:center;font-size:.82em;opacity:.6;margin-top:-.3em;">
+  <a href="../frame-graph-production/" style="opacity:.8;">Part III</a> covers how UE5 and Frostbite implement these.
+</div>
 
 ---
 
