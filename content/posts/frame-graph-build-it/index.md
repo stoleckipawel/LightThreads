@@ -207,6 +207,59 @@ Four pieces, each feeding the next:
 
 The key data structure: each resource entry tracks its **current version** (incremented on write) and a **writer pass index** per version. When a pass calls `read(h)`, the graph looks up the current version's writer and adds a dependency edge from that writer to the reading pass.
 
+Here's what changes from v1. The `ResourceDesc` array becomes `ResourceEntry` — each entry carries a version list. `RenderPass` gains dependency tracking fields. And two new methods, `read()` and `write()`, wire everything together:
+
+{{< code-diff title="v1 → v2 — Resource versioning & dependency tracking" >}}
+@@ New types (resource state + version tracking) @@
++enum class ResourceState { Undefined, ColorAttachment, DepthAttachment,
++                           ShaderRead, Present };
++
++struct ResourceVersion {                 // NEW v2
++    uint32_t writerPass = UINT32_MAX;    // which pass wrote this version
++    std::vector<uint32_t> readerPasses;  // which passes read it
++};
++
++struct ResourceEntry {
++    ResourceDesc desc;
++    std::vector<ResourceVersion> versions;  // version 0, 1, 2...
++    ResourceState currentState = ResourceState::Undefined;
++};
+
+@@ RenderPass — new fields @@
+ struct RenderPass {
+     std::string name;
+     std::function<void()>             setup;
+     std::function<void(/*cmd list*/)> execute;
++    std::vector<ResourceHandle> reads;     // NEW v2
++    std::vector<ResourceHandle> writes;    // NEW v2
++    std::vector<uint32_t> dependsOn;       // NEW v2
++    std::vector<uint32_t> successors;      // NEW v2
++    uint32_t inDegree = 0;                 // NEW v2 (Kahn's)
++    bool     alive    = false;             // NEW v2 (culling)
+ };
+
+@@ FrameGraph — read/write methods @@
++    void read(uint32_t passIdx, ResourceHandle h) {
++        auto& ver = entries_[h.index].versions.back();
++        if (ver.writerPass != UINT32_MAX)
++            passes_[passIdx].dependsOn.push_back(ver.writerPass);
++        ver.readerPasses.push_back(passIdx);
++        passes_[passIdx].reads.push_back(h);
++    }
++
++    void write(uint32_t passIdx, ResourceHandle h) {
++        entries_[h.index].versions.push_back({});
++        entries_[h.index].versions.back().writerPass = passIdx;
++        passes_[passIdx].writes.push_back(h);
++    }
+
+@@ Storage @@
+-    std::vector<ResourceDesc>  resources_;
++    std::vector<ResourceEntry> entries_;  // now with versioning
+{{< /code-diff >}}
+
+Every `write()` pushes a new version. Every `read()` finds the current version's writer and records a `dependsOn` edge. Those edges feed the next three steps.
+
 ---
 
 <span id="v2-toposort"></span>
@@ -214,6 +267,45 @@ The key data structure: each resource entry tracks its **current version** (incr
 ### 📊 Topological sort (Kahn's algorithm)
 
 [Part I](/posts/frame-graph-theory/#sorting-and-culling) covered *why* the graph needs sorting — every pass must run after the passes it depends on. Here's *how*: **Kahn's algorithm**. Count incoming edges per pass. Any pass with zero means all its dependencies are satisfied — emit it, decrement its neighbors' counts, repeat until the queue drains. If the output is shorter than the pass count, you have a cycle.
+
+Before we can sort, we need an adjacency list. `buildEdges()` deduplicates the raw `dependsOn` entries from the versioning step and builds the `successors` list that Kahn's algorithm walks:
+
+{{< code-diff title="v2 — Edge building + Kahn's topological sort" >}}
+@@ buildEdges() — deduplicate and build adjacency list @@
++    void buildEdges() {
++        for (uint32_t i = 0; i < passes_.size(); i++) {
++            std::unordered_set<uint32_t> seen;
++            for (uint32_t dep : passes_[i].dependsOn) {
++                if (seen.insert(dep).second) {
++                    passes_[dep].successors.push_back(i);
++                    passes_[i].inDegree++;
++                }
++            }
++        }
++    }
+
+@@ topoSort() — Kahn's algorithm, O(V + E) @@
++    std::vector<uint32_t> topoSort() {
++        std::queue<uint32_t> q;
++        std::vector<uint32_t> inDeg(passes_.size());
++        for (uint32_t i = 0; i < passes_.size(); i++) {
++            inDeg[i] = passes_[i].inDegree;
++            if (inDeg[i] == 0) q.push(i);
++        }
++        std::vector<uint32_t> order;
++        while (!q.empty()) {
++            uint32_t cur = q.front(); q.pop();
++            order.push_back(cur);
++            for (uint32_t succ : passes_[cur].successors) {
++                if (--inDeg[succ] == 0) q.push(succ);
++            }
++        }
++        assert(order.size() == passes_.size() && "Cycle detected!");
++        return order;
++    }
+{{< /code-diff >}}
+
+Step through the algorithm interactively — watch nodes with zero in-degree get emitted one by one:
 
 {{< interactive-toposort >}}
 
@@ -233,6 +325,21 @@ The key data structure: each resource entry tracks its **current version** (incr
   <span style="font-size:1.3em;line-height:1;">⏱️</span>
   <span><strong>Cost:</strong> O(V + E) — one linear walk.</span>
 </div>
+
+The code is a single backward walk — mark the final pass alive, then propagate backward through `dependsOn` edges:
+
+{{< code-diff title="v2 — Pass culling" >}}
+@@ cull() — backward reachability from output @@
++    void cull(const std::vector<uint32_t>& sorted) {
++        if (sorted.empty()) return;
++        passes_[sorted.back()].alive = true;   // last pass = output
++        for (int i = (int)sorted.size() - 1; i >= 0; i--) {
++            if (!passes_[sorted[i]].alive) continue;
++            for (uint32_t dep : passes_[sorted[i]].dependsOn)
++                passes_[dep].alive = true;
++        }
++    }
+{{< /code-diff >}}
 
 Toggle edges in the DAG below — disconnect a pass and the compiler removes it along with its resources in real time:
 
@@ -255,39 +362,37 @@ The algorithm is a single walk over the sorted execution order. Each resource ca
 
 One linear walk, O(V + E). Every barrier lands exactly where the state actually changes — zero redundant transitions, zero missed ones.
 
-Step through a full pipeline below — watch each resource's state update as passes execute, and see exactly where the compiler fires each barrier:
-
-{{< interactive-barriers >}}
-
 <div style="margin:1em 0;padding:.8em 1em;border-radius:8px;border-left:3px solid rgba(var(--ds-danger-rgb),.5);background:rgba(var(--ds-danger-rgb),.04);font-size:.9em;line-height:1.6;">
 A real frame needs <strong>dozens of these</strong>. Miss one → rendering corruption or a GPU crash. Add an unnecessary one → the GPU stalls waiting for nothing. The four-step walk above eliminates both failure modes — every barrier is derived from the declared read/write edges, nothing more.
 </div>
 
----
+The implementation walks each pass's reads and writes, comparing the resource's tracked state to what the pass needs. If they differ — emit a barrier and update:
 
-### 🧩 Putting it together — v1 → v2 diff
+{{< code-diff title="v2 — Barrier insertion + execute() rewrite" >}}
+@@ insertBarriers() — emit transitions where state changes @@
++    void insertBarriers(uint32_t passIdx) {
++        auto stateForUsage = [](bool isWrite, Format fmt) {
++            if (isWrite)
++                return (fmt == Format::D32F) ? ResourceState::DepthAttachment
++                                             : ResourceState::ColorAttachment;
++            return ResourceState::ShaderRead;
++        };
++        for (auto& h : passes_[passIdx].reads) {
++            ResourceState needed = ResourceState::ShaderRead;
++            if (entries_[h.index].currentState != needed) {
++                // emit barrier: old state → new state
++                entries_[h.index].currentState = needed;
++            }
++        }
++        for (auto& h : passes_[passIdx].writes) {
++            ResourceState needed = stateForUsage(true, entries_[h.index].desc.format);
++            if (entries_[h.index].currentState != needed) {
++                entries_[h.index].currentState = needed;
++            }
++        }
++    }
 
-We need five new pieces: (1) resource versioning with read/write tracking, (2) adjacency list for the DAG, (3) topological sort, (4) pass culling, and (5) barrier insertion. Additions marked with `// NEW v2` in the source:
-
-{{< code-diff title="v1 → v2 — Key structural changes" >}}
-@@ RenderPass struct @@
- struct RenderPass {
-     std::string name;
-     std::function<void()>             setup;
-     std::function<void(/*cmd list*/)> execute;
-+    std::vector<ResourceHandle> reads;     // NEW v2
-+    std::vector<ResourceHandle> writes;    // NEW v2
-+    std::vector<uint32_t> dependsOn;       // NEW v2
-+    std::vector<uint32_t> successors;      // NEW v2
-+    uint32_t inDegree = 0;                 // NEW v2
-+    bool     alive    = false;             // NEW v2
- };
-
-@@ FrameGraph class — new methods @@
-+    void read(uint32_t passIdx, ResourceHandle h);  // link to resource version
-+    void write(uint32_t passIdx, ResourceHandle h);  // create new version
-
-@@ FrameGraph::execute() @@
+@@ execute() — the full v2 pipeline @@
 -    // v1: just run every pass in declaration order.
 -    for (auto& pass : passes_)
 -        pass.execute();
@@ -300,13 +405,17 @@ We need five new pieces: (1) resource versioning with read/write tracking, (2) a
 +        insertBarriers(idx);                // auto barriers
 +        passes_[idx].execute();
 +    }
-
-@@ New internal data @@
--    std::vector<ResourceDesc>  resources_;
-+    std::vector<ResourceEntry> entries_;  // now with versioning
 {{< /code-diff >}}
 
-Full updated source:
+All four pieces — versioning, sorting, culling, barriers — compose into that `execute()` body. Each step feeds the next: versioning creates edges, edges feed the sort, the sort enables culling, and the surviving sorted passes get automatic barriers.
+
+Step through a full pipeline below — watch each resource's state update as passes execute, and see exactly where the compiler fires each barrier:
+
+{{< interactive-barriers >}}
+
+---
+
+### 🧩 Full v2 source
 
 {{< include-code file="frame_graph_v2.h" lang="cpp" compact="true" >}}
 {{< include-code file="example_v2.cpp" lang="cpp" compile="true" deps="frame_graph_v2.h" compact="true" >}}
@@ -323,7 +432,41 @@ V2 gives us ordering, culling, and barriers — but every transient resource liv
 
 The algorithm has two steps. First, **scan lifetimes**: walk the sorted pass list and record each transient resource's `firstUse` and `lastUse` pass indices (imported resources are excluded — they're externally owned). Second, **free-list scan**: sort resources by first-use, then greedily try to fit each one into an existing physical block that's compatible (same memory type, large enough, and whose last user finished before this resource's first use). Fit → reuse. No fit → allocate a new block. This is greedy interval-coloring.
 
-Without aliasing, every transient resource is a **committed allocation** — its own chunk of VRAM from creation to end of frame, even if it's only used for 2–3 passes. Here's what that looks like for six transient resources at 1080p:
+Two new structs capture this — a `Lifetime` per resource and a `PhysicalBlock` per heap slot. The lifetime scan is a single walk over the sorted pass list:
+
+{{< code-diff title="v2 → v3 — Lifetime structs & scan" >}}
+@@ New structs @@
++struct PhysicalBlock {              // physical memory slot
++    uint32_t sizeBytes  = 0;
++    Format   format     = Format::RGBA8;
++    uint32_t availAfter = 0;        // free after this pass index
++};
++
++struct Lifetime {                   // per-resource timing
++    uint32_t firstUse = UINT32_MAX;
++    uint32_t lastUse  = 0;
++    bool     isTransient = true;
++};
+
+@@ scanLifetimes() — walk sorted passes, record first/last use @@
++    std::vector<Lifetime> scanLifetimes(const std::vector<uint32_t>& sorted) {
++        std::vector<Lifetime> life(entries_.size());
++        for (uint32_t order = 0; order < sorted.size(); order++) {
++            if (!passes_[sorted[order]].alive) continue;
++            for (auto& h : passes_[sorted[order]].reads) {
++                life[h.index].firstUse = std::min(life[h.index].firstUse, order);
++                life[h.index].lastUse  = std::max(life[h.index].lastUse,  order);
++            }
++            for (auto& h : passes_[sorted[order]].writes) {
++                life[h.index].firstUse = std::min(life[h.index].firstUse, order);
++                life[h.index].lastUse  = std::max(life[h.index].lastUse,  order);
++            }
++        }
++        return life;
++    }
+{{< /code-diff >}}
+
+Now that we know every resource's lifetime, we can see the waste. Without aliasing, every transient resource is a **committed allocation** — its own chunk of VRAM from creation to end of frame, even if it's only used for 2–3 passes. Here's what that looks like for six transient resources at 1080p:
 
 <div style="margin:1.2em 0;font-size:.85em;">
   <div style="border-radius:10px;overflow:hidden;border:1.5px solid rgba(var(--ds-danger-rgb),.15);">
@@ -476,67 +619,64 @@ Most of that memory sits idle. The colored bars show when each resource is actua
 
 This requires **placed resources** at the API level — GPU memory allocated from a heap, with resources bound to offsets within it. In D3D12, that means `ID3D12Heap` + `CreatePlacedResource`. In Vulkan, `VkDeviceMemory` + `vkBindImageMemory` at different offsets. Without placed resources (i.e., `CreateCommittedResource` or Vulkan dedicated allocations), each resource gets its own memory and aliasing is impossible — which is why the graph's allocator works with heaps.
 
-Drag the interactive timeline below to see how resources share physical blocks as their lifetimes end:
+The second half of the algorithm — the greedy free-list allocator. Sort resources by `firstUse`, then try to fit each one into an existing block whose previous user has finished:
 
-{{< interactive-aliasing >}}
-
----
-
-### 🧩 Putting it together — v2 → v3 diff
-
-Two additions to the `FrameGraph` class: (1) a lifetime scan that records each transient resource's first and last use in the sorted pass order, and (2) a greedy free-list allocator that reuses physical blocks when lifetimes don't overlap.
-
-{{< code-diff title="v2 → v3 — Key additions for lifetime analysis & aliasing" >}}
-@@ New structs @@
-+struct PhysicalBlock {              // physical memory slot
-+    uint32_t sizeBytes  = 0;
-+    Format   format     = Format::RGBA8;
-+    uint32_t availAfter = 0;        // free after this pass
-+};
+{{< code-diff title="v3 — Greedy free-list aliasing + compile() integration" >}}
+@@ aliasResources() — greedy free-list scan @@
++    std::vector<uint32_t> aliasResources(const std::vector<Lifetime>& lifetimes) {
++        std::vector<PhysicalBlock> freeList;
++        std::vector<uint32_t> mapping(entries_.size(), UINT32_MAX);
 +
-+struct Lifetime {                   // per-resource timing
-+    uint32_t firstUse = UINT32_MAX;
-+    uint32_t lastUse  = 0;
-+    bool     isTransient = true;
-+};
++        // sort resources by firstUse
++        std::vector<uint32_t> indices(entries_.size());
++        std::iota(indices.begin(), indices.end(), 0);
++        std::sort(indices.begin(), indices.end(), [&](uint32_t a, uint32_t b) {
++            return lifetimes[a].firstUse < lifetimes[b].firstUse;
++        });
++
++        for (uint32_t resIdx : indices) {
++            if (!lifetimes[resIdx].isTransient) continue;
++            if (lifetimes[resIdx].firstUse == UINT32_MAX) continue;
++            uint32_t needed = /* width * height * bpp */;
++            bool reused = false;
++            for (uint32_t b = 0; b < freeList.size(); b++) {
++                if (freeList[b].availAfter < lifetimes[resIdx].firstUse
++                    && freeList[b].sizeBytes >= needed) {
++                    mapping[resIdx] = b;         // reuse this block
++                    freeList[b].availAfter = lifetimes[resIdx].lastUse;
++                    reused = true; break;
++                }
++            }
++            if (!reused) {
++                mapping[resIdx] = freeList.size();
++                freeList.push_back({ needed, fmt, lifetimes[resIdx].lastUse });
++            }
++        }
++        return mapping;
++    }
 
-@@ FrameGraph::compile() @@
+@@ compile() — v3 adds lifetime scan + aliasing @@
      auto sorted = topoSort();
      cull(sorted);
 +    auto lifetimes = scanLifetimes(sorted);     // NEW v3
 +    auto mapping   = aliasResources(lifetimes); // NEW v3
-+    // mapping now holds physical bindings — execute just runs passes
-
-@@ scanLifetimes() — walk sorted passes, record first/last use @@
-+    for (uint32_t order = 0; order < sorted.size(); order++) {
-+        for (auto& h : passes_[sorted[order]].reads) {
-+            life[h.index].firstUse = min(life[h.index].firstUse, order);
-+            life[h.index].lastUse  = max(life[h.index].lastUse,  order);
-+        }
-+        // ... same for writes ...
-+    }
-
-@@ aliasResources() — greedy free-list scan @@
-+    // sort resources by firstUse, then scan free list:
-+    for (uint32_t resIdx : indices) {
-+        for (uint32_t b = 0; b < freeList.size(); b++) {
-+            if (freeList[b].availAfter < firstUse && sizeOK) {
-+                mapping[resIdx] = b;  // reuse!
-+                break;
-+            }
-+        }
-+        if (!reused) freeList.push_back(newBlock); // allocate
-+    }
++    // mapping[virtualIdx] → physicalBlock — execute just runs passes
 {{< /code-diff >}}
-
-Complete v3 source — all v2 code plus lifetime analysis and aliasing:
-
-{{< include-code file="frame_graph_v3.h" lang="cpp" compact="true" >}}
-{{< include-code file="example_v3.cpp" lang="cpp" compile="true" deps="frame_graph_v3.h" compact="true" >}}
 
 ~70 new lines on top of v2. Aliasing runs once per frame in O(R log R) — sort, then linear scan of the free list. Sub-microsecond for 15 transient resources.
 
+Drag the interactive timeline below to see how resources share physical blocks as their lifetimes end:
+
+{{< interactive-aliasing >}}
+
 That's the full value prop — automatic memory aliasing *and* automatic barriers from a single `FrameGraph` class. UE5's transient resource allocator does the same thing: any `FRDGTexture` created through `FRDGBuilder::CreateTexture` (vs `RegisterExternalTexture`) is transient and eligible for aliasing, using the same lifetime analysis and free-list scan we just built.
+
+---
+
+### 🧩 Full v3 source
+
+{{< include-code file="frame_graph_v3.h" lang="cpp" compact="true" >}}
+{{< include-code file="example_v3.cpp" lang="cpp" compile="true" deps="frame_graph_v3.h" compact="true" >}}
 
 ---
 
