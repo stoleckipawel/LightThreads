@@ -133,7 +133,7 @@ showWordCount: false
 
 <!-- Hero intro -->
 <div class="about-hero" style="position:relative;margin:0 0 2em;padding:1.4em 1.6em;border-radius:14px;border:1.5px solid rgba(99,102,241,.18);background:linear-gradient(135deg,rgba(99,102,241,.05),rgba(34,197,94,.03));line-height:1.7;">
-  <div style="font-size:1.25em;font-weight:800;margin-bottom:.3em;">LightThreads</div>
+  <div style="font-size:1.25em;font-weight:800;margin-bottom:.3em;">Deep Spark</div>
   <div style="font-size:1em;">
     A compact notebook for <strong>engine design</strong>, <strong>GPU/CPU/memory profiling</strong>, <strong>PBR</strong>, <strong>ray tracing</strong>, and <strong>practical performance work</strong>.
   </div>

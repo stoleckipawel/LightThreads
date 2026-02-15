@@ -1,5 +1,5 @@
 @echo off
-REM Preview LightThreads locally with Hugo (double-click this file)
+REM Preview Deep Spark locally with Hugo (double-click this file)
 cd /d "%~dp0"
 echo Starting Hugo dev server in a new window...
 start "Hugo" cmd /k "hugo server --bind 127.0.0.1 --port 1313 --baseURL http://localhost:1313/ --appendPort=false"

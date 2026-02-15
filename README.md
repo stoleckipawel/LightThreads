@@ -1,6 +1,6 @@
-# LightThreads
+# Deep Spark
 
-LightThreads is a Hugo + Blowfish site for **real-time rendering** writing: articles, experiment logs, and profiling/analysis workflows.
+Deep Spark is a Hugo + Blowfish site for **real-time rendering** writing: articles, experiment logs, and profiling/analysis workflows.
 
 ## What’s inside
 

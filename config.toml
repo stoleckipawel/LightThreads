@@ -1,5 +1,5 @@
-baseURL = "https://stoleckipawel.github.io/LightThreads/"
+baseURL = "https://stoleckipawel.github.io/DeepSpark/"
 languageCode = "en-us"
-title = "LightThreads"
+title = "Deep Spark"
 theme = "blowfish"
 enableRobotsTXT = true
