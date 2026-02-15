@@ -76,6 +76,7 @@
 .pipe-minimap-hint{font-weight:400;text-transform:none;letter-spacing:normal}
 .pipe-minimap-container{overflow-x:auto;padding:.3em;-webkit-overflow-scrolling:touch}
 #pipe-minimap{display:block;min-height:120px}
+@keyframes pipeCharge{to{stroke-dashoffset:-48}}
 
 /* Focus view */
 .pipe-focus-wrap{margin:.7em 0;border:2px solid rgba(var(--ds-code-rgb),.25);border-radius:10px;overflow:hidden;background:rgba(var(--ds-code-rgb),.02);transition:border-color .3s}
@@ -414,6 +415,12 @@ function renderMinimap(opts){
       opacity:both?"0.45":"0.12"};
     if(!both)attrs["stroke-dasharray"]="3 2";
     svg.append(el("path",attrs));
+    if(both){
+      var mfAttrs={d:attrs.d,fill:"none",stroke:"#93c5fd","stroke-width":"1.8",
+        "stroke-dasharray":"5 12","stroke-linecap":"round","pointer-events":"none",
+        opacity:"0.55",style:"animation:pipeCharge 1.8s linear infinite"};
+      svg.append(el("path",mfAttrs));
+    }
   });
 
   /* barrier ticks */
@@ -564,6 +571,13 @@ function renderFocus(opts){
       opacity:edgeAlive?"0.65":"0.2"};
     if(!edgeAlive)attrs["stroke-dasharray"]="4 3";
     svg.append(el("path",attrs));
+    /* flowing charge overlay */
+    if(edgeAlive){
+      var fAttrs={d:attrs.d,fill:"none",stroke:"#93c5fd","stroke-width":"3",
+        "stroke-dasharray":"14 34","stroke-linecap":"round","pointer-events":"none",
+        opacity:"0.55",style:"animation:pipeCharge 2s linear infinite"};
+      svg.append(el("path",fAttrs));
+    }
     /* arrow */
     svg.append(el("polygon",{
       points:dx+","+dy+" "+(dx-7)+","+(dy-4)+" "+(dx-7)+","+(dy+4),

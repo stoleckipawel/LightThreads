@@ -36,6 +36,7 @@
 .split-ex-btn:hover{border-color:var(--ds-info);color:var(--ds-info)}
 .split-ex-active{background:var(--ds-info)!important;color:#fff!important;border-color:var(--ds-info)!important;box-shadow:0 0 0 2px rgba(var(--ds-info-rgb),.25)!important}
 :is(.dark,.scheme-congo) .split-ex-btn{border-color:var(--color-neutral-600);color:var(--color-neutral-300);background:var(--color-neutral-700)}
+@keyframes splitCharge{to{stroke-dashoffset:-35}}
 </style>
 
 <script>
@@ -212,6 +213,9 @@ function render(){
     // Overlap arrow
     if(endX-beginX>30){
       svg.append(el("line",{x1:beginX+8,y1:splitY+laneH+14,x2:endX-8,y2:splitY+laneH+14,stroke:"var(--ds-success)","stroke-width":2,"marker-start":"url(#split-al)","marker-end":"url(#split-ar)"}));
+      // Flowing charge overlay for overlap arrow
+      var oFlow=el("line",{x1:beginX+8,y1:splitY+laneH+14,x2:endX-8,y2:splitY+laneH+14,stroke:"#4ade80","stroke-width":"3","stroke-dasharray":"10 25","stroke-linecap":"round","pointer-events":"none",opacity:".55",style:"animation:splitCharge 1.8s linear infinite"});
+      svg.append(oFlow);
       svg.append(txt((beginX+endX)/2,splitY+laneH+28,"GPU overlaps here","var(--ds-success)","bold 10px ui-monospace,monospace","middle"));
     }
   }

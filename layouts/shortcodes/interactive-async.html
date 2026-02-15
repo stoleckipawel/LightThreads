@@ -38,6 +38,7 @@
 .async-ex-btn:hover{border-color:var(--ds-info);color:var(--ds-info)}
 .async-ex-active{background:var(--ds-info)!important;color:#fff!important;border-color:var(--ds-info)!important;box-shadow:0 0 0 2px rgba(var(--ds-info-rgb),.25)!important}
 :is(.dark,.scheme-congo) .async-ex-btn{border-color:var(--color-neutral-600);color:var(--color-neutral-300);background:var(--color-neutral-700)}
+@keyframes asyncCharge{to{stroke-dashoffset:-28}}
 </style>
 
 <script>
@@ -223,6 +224,9 @@ function render(){
         const x1=left+sc.endTime[d]*scale;
         const x2=left+sc.startTime[p.id]*scale;
         svg.append(el("line",{x1:x1,y1:fromY,x2:x2,y2:toY,stroke:"var(--ds-warn)","stroke-width":2.5,"stroke-dasharray":"5,3","marker-end":"url(#async-arrow)"}));
+        // Flowing charge overlay for fence lines
+        var fFlow=el("line",{x1:x1,y1:fromY,x2:x2,y2:toY,stroke:"#fbbf24","stroke-width":"3","stroke-dasharray":"8 20","stroke-linecap":"round","pointer-events":"none",opacity:".55",style:"animation:asyncCharge 1.8s linear infinite"});
+        svg.append(fFlow);
         // Fence label
         const mx=(x1+x2)/2,my=(fromY+toY)/2;
         svg.append(txt(mx,my-8,"fence","var(--ds-warn)","bold 9px ui-monospace,monospace","middle"));
