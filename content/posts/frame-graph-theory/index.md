@@ -22,13 +22,13 @@ showTableOfContents: false
 <div class="fg-reveal" style="margin:1.2em 0 1.5em;padding:1.3em 1.5em;border-radius:12px;border:1.5px solid rgba(var(--ds-indigo-rgb),.18);background:linear-gradient(135deg,rgba(var(--ds-indigo-rgb),.04),rgba(var(--ds-success-rgb),.03));">
   <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:.3em .8em;align-items:center;font-size:1em;line-height:1.6;">
     <span style="text-decoration:line-through;opacity:.4;text-align:right;">Passes run in whatever order you wrote them.</span>
-    <span style="opacity:.45;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 32 20" width="24" height="15" fill="none"><line x1="3" y1="10" x2="20" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".15"/><line x1="3" y1="10" x2="20" y2="10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="5 12" opacity=".55" style="animation:smCharge 1.4s linear infinite"/><polyline points="17,4 28,10 17,16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".35"/></svg></span>
+    <span style="opacity:.45;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 32 20" width="24" height="15" fill="none"><line x1="3" y1="10" x2="20" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".15"/><line x1="3" y1="10" x2="20" y2="10" class="flow flow-sm flow-current" style="animation-duration:1.4s"/><polyline points="17,4 28,10 17,16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".35"/></svg></span>
     <strong>Sorted by dependencies.</strong>
     <span style="text-decoration:line-through;opacity:.4;text-align:right;">Every GPU sync point placed by hand.</span>
-    <span style="opacity:.45;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 32 20" width="24" height="15" fill="none"><line x1="3" y1="10" x2="20" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".15"/><line x1="3" y1="10" x2="20" y2="10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="5 12" opacity=".55" style="animation:smCharge 1.5s linear infinite"/><polyline points="17,4 28,10 17,16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".35"/></svg></span>
+    <span style="opacity:.45;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 32 20" width="24" height="15" fill="none"><line x1="3" y1="10" x2="20" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".15"/><line x1="3" y1="10" x2="20" y2="10" class="flow flow-sm flow-current"/><polyline points="17,4 28,10 17,16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".35"/></svg></span>
     <strong>Barriers inserted for you.</strong>
     <span style="text-decoration:line-through;opacity:.4;text-align:right;">Each pass allocates its own memory — 900 MB gone.</span>
-    <span style="opacity:.45;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 32 20" width="24" height="15" fill="none"><line x1="3" y1="10" x2="20" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".15"/><line x1="3" y1="10" x2="20" y2="10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="5 12" opacity=".55" style="animation:smCharge 1.6s linear infinite"/><polyline points="17,4 28,10 17,16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".35"/></svg></span>
+    <span style="opacity:.45;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 32 20" width="24" height="15" fill="none"><line x1="3" y1="10" x2="20" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".15"/><line x1="3" y1="10" x2="20" y2="10" class="flow flow-sm flow-current" style="animation-duration:1.6s"/><polyline points="17,4 28,10 17,16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".35"/></svg></span>
     <strong style="color:var(--ds-success);">Resources shared safely — ~450 MB back.</strong>
   </div>
   <div style="margin-top:.8em;padding-top:.7em;border-top:1px solid rgba(var(--ds-indigo-rgb),.1);font-size:.88em;opacity:.7;line-height:1.5;text-align:center;">
@@ -157,13 +157,6 @@ A frame graph is a **directed acyclic graph (DAG)** — each node is a render pa
 <!-- DAG flow diagram — Frostbite-style -->
 <div style="margin:1.6em 0 .5em;text-align:center;">
 <svg viewBox="0 0 1050 210" width="100%" style="max-width:1050px;display:block;margin:0 auto;font-family:inherit;" xmlns="http://www.w3.org/2000/svg">
-  <style>
-    @keyframes charge{to{stroke-dashoffset:-48}}
-    .fl{animation:charge 2s linear infinite;pointer-events:none;opacity:.55}
-    .fl1{animation-duration:2.4s}.fl2{animation-duration:2.8s}.fl3{animation-duration:1.6s}
-    .fl4{animation-duration:3.2s}.fl5{animation-duration:2s}.fl6{animation-duration:2.6s}
-    .fl7{animation-duration:1.5s}.fl8{animation-duration:1.8s}
-  </style>
   <defs>
     <filter id="gB" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur"/><feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.23  0 0 0 0 0.51  0 0 0 0 0.96  0 0 0 0.35 0"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
     <filter id="gO" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur"/><feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.96  0 0 0 0 0.62  0 0 0 0 0.04  0 0 0 0.35 0"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
@@ -184,15 +177,15 @@ A frame graph is a **directed acyclic graph (DAG)** — each node is a render pa
   <path d="M300,176 C370,205 480,205 548,125" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="2" stroke-linecap="round" marker-end="url(#ah)"/>
   <path d="M650,106 L720,106" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="2" stroke-linecap="round" marker-end="url(#ah)"/>
   <path d="M830,106 L910,106" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="2" stroke-linecap="round" marker-end="url(#ah)"/>
-  <!-- flow particles (CSS animated) -->
-  <path class="fl fl1" d="M115,100 L155,100 L155,42 L195,42" fill="none" stroke="#93c5fd" stroke-width="3" stroke-dasharray="14 34" stroke-linecap="round" stroke-linejoin="round"/>
-  <path class="fl fl2" d="M115,120 L155,120 L155,160 L200,160" fill="none" stroke="#93c5fd" stroke-width="3" stroke-dasharray="14 34" stroke-linecap="round" stroke-linejoin="round"/>
-  <path class="fl fl3" d="M300,160 L380,160" fill="none" stroke="#93c5fd" stroke-width="3" stroke-dasharray="14 34" stroke-linecap="round"/>
-  <path class="fl fl4" d="M320,42 L520,42 L520,96 L548,96" fill="none" stroke="#93c5fd" stroke-width="3" stroke-dasharray="14 34" stroke-linecap="round" stroke-linejoin="round"/>
-  <path class="fl fl5" d="M462,160 L548,118" fill="none" stroke="#93c5fd" stroke-width="3" stroke-dasharray="14 34" stroke-linecap="round"/>
-  <path class="fl fl6" d="M300,176 C370,205 480,205 548,125" fill="none" stroke="#93c5fd" stroke-width="3" stroke-dasharray="14 34" stroke-linecap="round"/>
-  <path class="fl fl7" d="M650,106 L720,106" fill="none" stroke="#93c5fd" stroke-width="3" stroke-dasharray="14 34" stroke-linecap="round"/>
-  <path class="fl fl8" d="M830,106 L910,106" fill="none" stroke="#93c5fd" stroke-width="3" stroke-dasharray="14 34" stroke-linecap="round"/>
+  <!-- flow particles (CSS animated — classes from custom.css flow system) -->
+  <path class="flow flow-lg flow-d1" d="M115,100 L155,100 L155,42 L195,42"/>
+  <path class="flow flow-lg flow-d2" d="M115,120 L155,120 L155,160 L200,160"/>
+  <path class="flow flow-lg flow-d3" d="M300,160 L380,160"/>
+  <path class="flow flow-lg flow-d4" d="M320,42 L520,42 L520,96 L548,96"/>
+  <path class="flow flow-lg flow-d5" d="M462,160 L548,118"/>
+  <path class="flow flow-lg flow-d6" d="M300,176 C370,205 480,205 548,125"/>
+  <path class="flow flow-lg flow-d7" d="M650,106 L720,106"/>
+  <path class="flow flow-lg flow-d8" d="M830,106 L910,106"/>
   <!-- nodes -->
   <rect x="10" y="86" width="105" height="44" rx="22" fill="url(#grB)" filter="url(#gB)"/>
   <text x="62" y="113" text-anchor="middle" fill="#fff" font-weight="700" font-size="12" letter-spacing=".5">Z-Prepass</text>
@@ -232,12 +225,12 @@ You don't execute this graph directly. Every frame goes through three steps — 
       <div style="font-weight:800;font-size:.88em;letter-spacing:.04em;color:var(--ds-info);">①&ensp;DECLARE</div>
       <div style="font-size:.75em;opacity:.6;margin-top:.2em;">passes &amp; dependencies</div>
     </a>
-    <span style="display:flex;align-items:center;flex-shrink:0;"><svg viewBox="0 0 28 20" width="20" height="14" fill="none"><line x1="2" y1="10" x2="17" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".15"/><line x1="2" y1="10" x2="17" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="5 12" opacity=".55" style="animation:smCharge 1.4s linear infinite"/><polyline points="15,4 24,10 15,16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".35"/></svg></span>
+    <span style="display:flex;align-items:center;flex-shrink:0;"><svg viewBox="0 0 28 20" width="20" height="14" fill="none"><line x1="2" y1="10" x2="17" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".15"/><line x1="2" y1="10" x2="17" y2="10" class="flow flow-sm flow-current" style="animation-duration:1.4s"/><polyline points="15,4 24,10 15,16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".35"/></svg></span>
     <a href="#-the-compile-step" aria-label="Jump to Compile section" style="flex:1;padding:.7em .6em;text-align:center;background:rgba(var(--ds-code-rgb),.06);border-right:1px solid rgba(var(--ds-indigo-rgb),.12);text-decoration:none;color:inherit;transition:background .2s ease;cursor:pointer;" onmouseover="this.style.background='rgba(var(--ds-code-rgb),.14)'" onmouseout="this.style.background='rgba(var(--ds-code-rgb),.06)'">
       <div style="font-weight:800;font-size:.88em;letter-spacing:.04em;color:var(--ds-code);">②&ensp;COMPILE</div>
       <div style="font-size:.75em;opacity:.6;margin-top:.2em;">order · aliases · barriers</div>
     </a>
-    <span style="display:flex;align-items:center;flex-shrink:0;"><svg viewBox="0 0 28 20" width="20" height="14" fill="none"><line x1="2" y1="10" x2="17" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".15"/><line x1="2" y1="10" x2="17" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="5 12" opacity=".55" style="animation:smCharge 1.5s linear infinite"/><polyline points="15,4 24,10 15,16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".35"/></svg></span>
+    <span style="display:flex;align-items:center;flex-shrink:0;"><svg viewBox="0 0 28 20" width="20" height="14" fill="none"><line x1="2" y1="10" x2="17" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".15"/><line x1="2" y1="10" x2="17" y2="10" class="flow flow-sm flow-current"/><polyline points="15,4 24,10 15,16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".35"/></svg></span>
     <a href="#-the-execute-step" aria-label="Jump to Execute section" style="flex:1;padding:.7em .6em;text-align:center;background:rgba(var(--ds-success-rgb),.06);text-decoration:none;color:inherit;transition:background .2s ease;cursor:pointer;" onmouseover="this.style.background='rgba(var(--ds-success-rgb),.14)'" onmouseout="this.style.background='rgba(var(--ds-success-rgb),.06)'">
       <div style="font-weight:800;font-size:.88em;letter-spacing:.04em;color:var(--ds-success);">③&ensp;EXECUTE</div>
       <div style="font-size:.75em;opacity:.6;margin-top:.2em;">record GPU commands</div>
@@ -663,22 +656,22 @@ Solving fences is the easy part — the compiler handles that. The harder questi
     <div style="width:100%;flex:1;display:flex;align-items:center;justify-content:center;padding:.7em .6em;border-radius:8px;background:rgba(var(--ds-indigo-rgb),.06);border:1.5px solid rgba(var(--ds-indigo-rgb),.15);text-align:center;font-weight:700;">Is Compute Shader?</div>
     <div style="margin-top:.4em;font-size:.78em;color:var(--ds-danger);text-align:center;line-height:1.35;opacity:.85;">✗ requires raster pipeline</div>
   </div>
-  <div style="display:flex;align-items:center;padding:0 .2em;flex-shrink:0;"><svg viewBox="0 0 44 28" width="44" height="28" fill="none"><line x1="4" y1="14" x2="28" y2="14" stroke="var(--ds-success)" stroke-width="2" stroke-linecap="round" opacity=".15"/><line x1="4" y1="14" x2="28" y2="14" stroke="var(--ds-success)" stroke-width="3" stroke-linecap="round" stroke-dasharray="8 20" opacity=".55" style="animation:dtCharge 1.8s linear infinite"/><polyline points="24,5 38,14 24,23" stroke="var(--ds-success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".35"/></svg></div>
+  <div style="display:flex;align-items:center;padding:0 .2em;flex-shrink:0;"><svg viewBox="0 0 44 28" width="44" height="28" fill="none"><line x1="4" y1="14" x2="28" y2="14" stroke="var(--ds-success)" stroke-width="2" stroke-linecap="round" opacity=".15"/><line x1="4" y1="14" x2="28" y2="14" class="flow flow-md flow-green" style="animation-duration:1.8s"/><polyline points="24,5 38,14 24,23" stroke="var(--ds-success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".35"/></svg></div>
   <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;">
     <div style="width:100%;flex:1;display:flex;align-items:center;justify-content:center;padding:.7em .6em;border-radius:8px;background:rgba(var(--ds-indigo-rgb),.06);border:1.5px solid rgba(var(--ds-indigo-rgb),.15);text-align:center;font-weight:700;">Zero Resource Contention with Graphics?</div>
     <div style="margin-top:.4em;font-size:.78em;color:var(--ds-danger);text-align:center;line-height:1.35;opacity:.85;">✗ data hazard with graphics</div>
   </div>
-  <div style="display:flex;align-items:center;padding:0 .2em;flex-shrink:0;"><svg viewBox="0 0 44 28" width="44" height="28" fill="none"><line x1="4" y1="14" x2="28" y2="14" stroke="var(--ds-success)" stroke-width="2" stroke-linecap="round" opacity=".15"/><line x1="4" y1="14" x2="28" y2="14" stroke="var(--ds-success)" stroke-width="3" stroke-linecap="round" stroke-dasharray="8 20" opacity=".55" style="animation:dtCharge 2s linear infinite"/><polyline points="24,5 38,14 24,23" stroke="var(--ds-success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".35"/></svg></div>
+  <div style="display:flex;align-items:center;padding:0 .2em;flex-shrink:0;"><svg viewBox="0 0 44 28" width="44" height="28" fill="none"><line x1="4" y1="14" x2="28" y2="14" stroke="var(--ds-success)" stroke-width="2" stroke-linecap="round" opacity=".15"/><line x1="4" y1="14" x2="28" y2="14" class="flow flow-md flow-green"/><polyline points="24,5 38,14 24,23" stroke="var(--ds-success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".35"/></svg></div>
   <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;">
     <div style="width:100%;flex:1;display:flex;align-items:center;justify-content:center;padding:.7em .6em;border-radius:8px;background:rgba(var(--ds-indigo-rgb),.06);border:1.5px solid rgba(var(--ds-indigo-rgb),.15);text-align:center;font-weight:700;">Has Complementary Resource Usage?</div>
     <div style="margin-top:.4em;font-size:.78em;color:var(--ds-danger);text-align:center;line-height:1.35;opacity:.85;">✗ same HW units — no overlap</div>
   </div>
-  <div style="display:flex;align-items:center;padding:0 .2em;flex-shrink:0;"><svg viewBox="0 0 44 28" width="44" height="28" fill="none"><line x1="4" y1="14" x2="28" y2="14" stroke="var(--ds-success)" stroke-width="2" stroke-linecap="round" opacity=".15"/><line x1="4" y1="14" x2="28" y2="14" stroke="var(--ds-success)" stroke-width="3" stroke-linecap="round" stroke-dasharray="8 20" opacity=".55" style="animation:dtCharge 2.2s linear infinite"/><polyline points="24,5 38,14 24,23" stroke="var(--ds-success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".35"/></svg></div>
+  <div style="display:flex;align-items:center;padding:0 .2em;flex-shrink:0;"><svg viewBox="0 0 44 28" width="44" height="28" fill="none"><line x1="4" y1="14" x2="28" y2="14" stroke="var(--ds-success)" stroke-width="2" stroke-linecap="round" opacity=".15"/><line x1="4" y1="14" x2="28" y2="14" class="flow flow-md flow-green" style="animation-duration:2.2s"/><polyline points="24,5 38,14 24,23" stroke="var(--ds-success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".35"/></svg></div>
   <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;">
     <div style="width:100%;flex:1;display:flex;align-items:center;justify-content:center;padding:.7em .6em;border-radius:8px;background:rgba(var(--ds-indigo-rgb),.06);border:1.5px solid rgba(var(--ds-indigo-rgb),.15);text-align:center;font-weight:700;">Has Enough Work Between Fences?</div>
     <div style="margin-top:.4em;font-size:.78em;color:var(--ds-danger);text-align:center;line-height:1.35;opacity:.85;">✗ sync cost exceeds gain</div>
   </div>
-  <div style="display:flex;align-items:center;padding:0 .2em;flex-shrink:0;"><svg viewBox="0 0 44 28" width="44" height="28" fill="none"><line x1="4" y1="14" x2="28" y2="14" stroke="var(--ds-success)" stroke-width="2" stroke-linecap="round" opacity=".15"/><line x1="4" y1="14" x2="28" y2="14" stroke="var(--ds-success)" stroke-width="3" stroke-linecap="round" stroke-dasharray="8 20" opacity=".55" style="animation:dtCharge 1.7s linear infinite"/><polyline points="24,5 38,14 24,23" stroke="var(--ds-success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".35"/></svg></div>
+  <div style="display:flex;align-items:center;padding:0 .2em;flex-shrink:0;"><svg viewBox="0 0 44 28" width="44" height="28" fill="none"><line x1="4" y1="14" x2="28" y2="14" stroke="var(--ds-success)" stroke-width="2" stroke-linecap="round" opacity=".15"/><line x1="4" y1="14" x2="28" y2="14" class="flow flow-md flow-green" style="animation-duration:1.7s"/><polyline points="24,5 38,14 24,23" stroke="var(--ds-success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".35"/></svg></div>
   <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;">
     <div style="width:100%;flex:1;display:flex;align-items:center;justify-content:center;padding:.7em .6em;border-radius:8px;background:rgba(var(--ds-success-rgb),.08);border:1.5px solid rgba(var(--ds-success-rgb),.25);text-align:center;font-weight:800;color:var(--ds-success);">ASYNC COMPUTE ✓</div>
   </div>

@@ -47,12 +47,10 @@
 #dag-svg .node rect{rx:8;ry:8;stroke-width:2;cursor:default;transition:fill .2s,stroke .2s,opacity .2s}
 #dag-svg .node text{font:600 12px ui-monospace,SFMono-Regular,monospace;fill:#fff;pointer-events:none;text-anchor:middle;dominant-baseline:central}
 #dag-svg .edge{cursor:pointer}
-#dag-svg .edge path{fill:none;stroke-width:3;transition:stroke .2s,opacity .2s}
-#dag-svg .edge .edge-flow{pointer-events:none;animation:dagCharge 2s linear infinite;opacity:.55}
+#dag-svg .edge path:not(.flow){fill:none;stroke-width:3;transition:stroke .2s,opacity .2s}
 #dag-svg .edge polygon{transition:fill .2s,opacity .2s}
 #dag-svg .edge-label{font:500 10px system-ui,sans-serif;pointer-events:none;text-anchor:middle;dominant-baseline:central;transition:fill .2s,opacity .2s}
 #dag-svg .edge-hit{fill:transparent;stroke:transparent;stroke-width:22;cursor:pointer}
-@keyframes dagCharge{to{stroke-dashoffset:-48}}
 </style>
 
 <script>
@@ -212,9 +210,7 @@ function render(){
     // Flowing charge overlay
     if(e.active){
       const flow=document.createElementNS("http://www.w3.org/2000/svg","path");
-      flow.setAttribute("d",p.d);flow.setAttribute("fill","none");flow.setAttribute("class","edge-flow");
-      flow.setAttribute("stroke","#93c5fd");flow.setAttribute("stroke-width","3");
-      flow.setAttribute("stroke-dasharray","14 34");flow.setAttribute("stroke-linecap","round");
+      flow.setAttribute("d",p.d);flow.setAttribute("class","flow flow-lg");
       g.append(flow);
     }
     const arrow=document.createElementNS("http://www.w3.org/2000/svg","polygon");

@@ -1753,6 +1753,46 @@ body.toc-sidebar-hidden section.prose { flex-direction: column !important; }
   }
 }
 
-/* ── Inline arrow charging (smooth pill flow) ── */
-@keyframes smCharge { to { stroke-dashoffset: -17 } }
-@keyframes dtCharge { to { stroke-dashoffset: -28 } }
+/* ═══════════════════════════════════════════════════════════
+   FLOW CHARGING SYSTEM
+   Tokens → schemes/deepspark.css (--ds-flow-*)
+   Size   dash:gap  offset  use-case
+   lg     14  34    –48     DAG / pipeline / big graph edges
+   md      8  20    –28     decision-tree / fence arrows
+   sm      5  12    –17     inline decorative arrows / minimap
+   ═══════════════════════════════════════════════════════════ */
+
+@keyframes flow-lg { to { stroke-dashoffset: -48 } }
+@keyframes flow-md { to { stroke-dashoffset: -28 } }
+@keyframes flow-sm { to { stroke-dashoffset: -17 } }
+
+/* Base — every flow overlay needs this */
+.flow {
+  pointer-events: none;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: var(--ds-flow-opacity, .55);
+  stroke: var(--ds-flow, #93c5fd);
+}
+
+/* Size variants */
+.flow-lg   { stroke-width: 3;   stroke-dasharray: 14 34; animation: flow-lg var(--ds-flow-speed, 2s) linear infinite }
+.flow-md   { stroke-width: 3;   stroke-dasharray: 8 20;  animation: flow-md var(--ds-flow-speed, 2s) linear infinite }
+.flow-sm   { stroke-width: 2.5; stroke-dasharray: 5 12;  animation: flow-sm 1.5s linear infinite }
+.flow-mini { stroke-width: 1.8; stroke-dasharray: 5 12;  animation: flow-sm 1.8s linear infinite }
+
+/* Color variants (default is blue via .flow) */
+.flow-amber   { stroke: var(--ds-flow-warn, #fbbf24) }
+.flow-green   { stroke: var(--ds-flow-ok, #4ade80) }
+.flow-current { stroke: currentColor }
+
+/* Speed modifiers — stagger identical edges for visual variety */
+.flow-d1 { animation-duration: 2.4s }
+.flow-d2 { animation-duration: 2.8s }
+.flow-d3 { animation-duration: 1.6s }
+.flow-d4 { animation-duration: 3.2s }
+.flow-d5 { animation-duration: 2s }
+.flow-d6 { animation-duration: 2.6s }
+.flow-d7 { animation-duration: 1.5s }
+.flow-d8 { animation-duration: 1.8s }

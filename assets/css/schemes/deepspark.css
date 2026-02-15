@@ -78,6 +78,16 @@
   --ds-slate-rgb:     100, 116, 139;
   --ds-slate-light:   #94a3b8;
 
+  /* ── Flow / charging animation tokens ────────────────────────── */
+  /*    Pill-shaped dashes animated along edges; one source of truth */
+  --ds-flow:           #93c5fd;              /* edge glow — soft blue  */
+  --ds-flow-warn:      #fbbf24;              /* fence glow — amber     */
+  --ds-flow-ok:        #4ade80;              /* overlap glow — green   */
+  --ds-flow-opacity:   0.55;
+  --ds-flow-speed:     2s;
+  --ds-track-opacity:  0.12;
+  --ds-chevron-opacity:0.35;
+
   /* ── Multi-part navigation colours (article-nav rail parts) ─── */
   --ds-part-0:     var(--ds-orange);
   --ds-part-1:     var(--ds-gold);

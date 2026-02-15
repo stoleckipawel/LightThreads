@@ -92,10 +92,8 @@
 #topo-svg .node rect{rx:8;ry:8;stroke-width:2}
 #topo-svg .node text{font:600 12px ui-monospace,SFMono-Regular,monospace;fill:#fff;pointer-events:none;text-anchor:middle;dominant-baseline:central}
 #topo-svg .deg-text{font:700 11px ui-monospace,monospace;pointer-events:none;text-anchor:middle;dominant-baseline:central}
-#topo-svg .edge path{fill:none;stroke-width:2.5}
-#topo-svg .edge .edge-flow{pointer-events:none;animation:topoCharge 2s linear infinite;opacity:.55}
+#topo-svg .edge path:not(.flow){fill:none;stroke-width:2.5}
 #topo-svg .edge polygon{stroke:none}
-@keyframes topoCharge{to{stroke-dashoffset:-48}}
 @keyframes edgePulse{0%{stroke-width:2.5;opacity:.8}50%{stroke-width:5;opacity:1}100%{stroke-width:2.5;opacity:.3}}
 @keyframes badgePulse{0%{r:11}50%{r:15}100%{r:11}}
 .topo-example-bar{display:flex;align-items:center;gap:.5em;margin-bottom:.75em;flex-wrap:wrap}
@@ -255,9 +253,7 @@ function render(){
     // Flowing charge overlay for active edges
     if(!isConsumed&&!isFlashing){
       var flow=document.createElementNS(NS,"path");
-      flow.setAttribute("d",p.d);flow.setAttribute("fill","none");flow.setAttribute("class","edge-flow");
-      flow.setAttribute("stroke","#93c5fd");flow.setAttribute("stroke-width","3");
-      flow.setAttribute("stroke-dasharray","14 34");flow.setAttribute("stroke-linecap","round");
+      flow.setAttribute("d",p.d);flow.setAttribute("class","flow flow-lg");
       g.append(flow);
     }
     var arr=document.createElementNS(NS,"polygon");
