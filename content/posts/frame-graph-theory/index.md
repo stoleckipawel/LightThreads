@@ -605,40 +605,38 @@ Solving fences is the easy part — the compiler handles that. The harder questi
   </div>
 </div>
 
-<div class="fg-reveal" style="margin:.6em 0 1.2em;padding:.65em 1em;border-radius:8px;border:1px solid rgba(var(--ds-indigo-rgb),.12);background:rgba(var(--ds-indigo-rgb),.03);font-size:.85em;line-height:1.6;opacity:.8;">
-NVIDIA uses dedicated async engines. AMD exposes more independent CUs for overlap. But on both: <strong>always profile per-GPU</strong> — the overlap that wins on one architecture can regress on another.
-</div>
-
 Try it yourself — move compute-eligible passes between queues and see how fence count and frame time change:
 
 {{< interactive-async >}}
 
 #### 🧭 Should this pass go async?
 
-<div style="margin:1.2em 0;max-width:420px;font-size:.88em;">
-  <div style="display:flex;align-items:center;gap:.6em;padding:.55em .8em;border-radius:8px 8px 0 0;background:rgba(var(--ds-indigo-rgb),.06);border:1.5px solid rgba(var(--ds-indigo-rgb),.15);border-bottom:none;">
-    <span style="font-weight:700;">Compute-only?</span>
-    <span style="margin-left:auto;font-size:.82em;color:var(--ds-danger);">no → needs rasterization</span>
+<div style="margin:1.5em 0;display:flex;align-items:stretch;gap:0;font-size:.88em;">
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;">
+    <div style="width:100%;flex:1;display:flex;align-items:center;justify-content:center;padding:.7em .6em;border-radius:8px;background:rgba(var(--ds-indigo-rgb),.06);border:1.5px solid rgba(var(--ds-indigo-rgb),.15);text-align:center;font-weight:700;">Is Compute Shader?</div>
+    <div style="margin-top:.4em;font-size:.78em;color:var(--ds-danger);text-align:center;line-height:1.35;opacity:.85;">✗ requires raster pipeline</div>
   </div>
-  <div style="text-align:center;color:var(--ds-success);font-weight:700;font-size:.75em;line-height:1.8;">yes ↓</div>
-  <div style="display:flex;align-items:center;gap:.6em;padding:.55em .8em;background:rgba(var(--ds-indigo-rgb),.06);border:1.5px solid rgba(var(--ds-indigo-rgb),.15);border-bottom:none;">
-    <span style="font-weight:700;">Independent of graphics?</span>
-    <span style="margin-left:auto;font-size:.82em;color:var(--ds-danger);">no → shared resource</span>
+  <div style="display:flex;align-items:center;padding:0 .35em;color:var(--ds-success);font-weight:900;font-size:2.4em;white-space:nowrap;flex-shrink:0;line-height:1;">→</div>
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;">
+    <div style="width:100%;flex:1;display:flex;align-items:center;justify-content:center;padding:.7em .6em;border-radius:8px;background:rgba(var(--ds-indigo-rgb),.06);border:1.5px solid rgba(var(--ds-indigo-rgb),.15);text-align:center;font-weight:700;">Zero Resource Contention with Graphics?</div>
+    <div style="margin-top:.4em;font-size:.78em;color:var(--ds-danger);text-align:center;line-height:1.35;opacity:.85;">✗ data hazard with graphics</div>
   </div>
-  <div style="text-align:center;color:var(--ds-success);font-weight:700;font-size:.75em;line-height:1.8;">yes ↓</div>
-  <div style="display:flex;align-items:center;gap:.6em;padding:.55em .8em;background:rgba(var(--ds-indigo-rgb),.06);border:1.5px solid rgba(var(--ds-indigo-rgb),.15);border-bottom:none;">
-    <span style="font-weight:700;">Complementary overlap?</span>
-    <span style="margin-left:auto;font-size:.82em;color:var(--ds-danger);">no → profile first</span>
+  <div style="display:flex;align-items:center;padding:0 .35em;color:var(--ds-success);font-weight:900;font-size:2.4em;white-space:nowrap;flex-shrink:0;line-height:1;">→</div>
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;">
+    <div style="width:100%;flex:1;display:flex;align-items:center;justify-content:center;padding:.7em .6em;border-radius:8px;background:rgba(var(--ds-indigo-rgb),.06);border:1.5px solid rgba(var(--ds-indigo-rgb),.15);text-align:center;font-weight:700;">Has Complementary Resource Usage?</div>
+    <div style="margin-top:.4em;font-size:.78em;color:var(--ds-danger);text-align:center;line-height:1.35;opacity:.85;">✗ same HW units — no overlap</div>
   </div>
-  <div style="text-align:center;color:var(--ds-success);font-weight:700;font-size:.75em;line-height:1.8;">yes ↓</div>
-  <div style="display:flex;align-items:center;gap:.6em;padding:.55em .8em;background:rgba(var(--ds-indigo-rgb),.06);border:1.5px solid rgba(var(--ds-indigo-rgb),.15);">
-    <span style="font-weight:700;">Enough work between fences?</span>
-    <span style="margin-left:auto;font-size:.82em;color:var(--ds-danger);">no → sync eats the gain</span>
+  <div style="display:flex;align-items:center;padding:0 .35em;color:var(--ds-success);font-weight:900;font-size:2.4em;white-space:nowrap;flex-shrink:0;line-height:1;">→</div>
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;">
+    <div style="width:100%;flex:1;display:flex;align-items:center;justify-content:center;padding:.7em .6em;border-radius:8px;background:rgba(var(--ds-indigo-rgb),.06);border:1.5px solid rgba(var(--ds-indigo-rgb),.15);text-align:center;font-weight:700;">Has Enough Work Between Fences?</div>
+    <div style="margin-top:.4em;font-size:.78em;color:var(--ds-danger);text-align:center;line-height:1.35;opacity:.85;">✗ sync cost exceeds gain</div>
   </div>
-  <div style="text-align:center;color:var(--ds-success);font-weight:700;font-size:.75em;line-height:1.8;">yes ↓</div>
-  <div style="padding:.55em .8em;border-radius:0 0 8px 8px;background:rgba(var(--ds-success-rgb),.08);border:1.5px solid rgba(var(--ds-success-rgb),.25);text-align:center;font-weight:800;color:var(--ds-success);">ASYNC COMPUTE ✓</div>
+  <div style="display:flex;align-items:center;padding:0 .35em;color:var(--ds-success);font-weight:900;font-size:2.4em;white-space:nowrap;flex-shrink:0;line-height:1;">→</div>
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;">
+    <div style="width:100%;flex:1;display:flex;align-items:center;justify-content:center;padding:.7em .6em;border-radius:8px;background:rgba(var(--ds-success-rgb),.08);border:1.5px solid rgba(var(--ds-success-rgb),.25);text-align:center;font-weight:800;color:var(--ds-success);">ASYNC COMPUTE ✓</div>
+  </div>
 </div>
-<div style="font-size:.82em;opacity:.6;margin-top:-.4em;">Good candidates: SSAO alongside ROP-bound geometry, volumetrics during shadow rasterization, particle sim during UI.</div>
+<div style="font-size:.82em;opacity:.6;margin-top:-.2em;text-align:center;">Good candidates: SSAO alongside ROP-bound geometry, volumetrics during shadow rasterization, particle sim during UI.</div>
 
 ### ✂️ Split Barriers
 
