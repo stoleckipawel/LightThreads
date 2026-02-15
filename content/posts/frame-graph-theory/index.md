@@ -36,7 +36,7 @@ showTableOfContents: false
   </div>
 </div>
 
-Frostbite introduced it at GDC 2017. UE5 ships it as **RDG**. Every major renderer uses one — this series shows you why, walks you through building your own in C++, and maps every piece to what ships in production engines.
+Behind every smooth frame is a brutal scheduling problem — which passes can run in parallel, which buffers can reuse the same memory, and which barriers are actually necessary. Frame graphs solve it: declare what each pass reads and writes, and the graph handles the rest. This series breaks down the theory, builds a real implementation in C++, and shows how the same ideas scale to production engines like UE5's RDG.
 
 <div class="fg-reveal" style="margin:1.5em 0;border-radius:12px;overflow:hidden;border:1.5px solid rgba(var(--ds-indigo-rgb),.25);background:linear-gradient(135deg,rgba(var(--ds-indigo-rgb),.04),transparent);">
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0;">
