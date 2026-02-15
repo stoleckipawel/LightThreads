@@ -20,7 +20,7 @@ description: "Longer-form rendering articles and write-ups."
 .posts-hero::before {
   content: '';
   position: absolute; inset: -1.5px; border-radius: 15px;
-  background: linear-gradient(90deg, transparent 25%, rgba(255,159,28,.2) 50%, transparent 75%);
+  background: linear-gradient(90deg, transparent 25%, rgba(var(--ds-accent-rgb),.2) 50%, transparent 75%);
   background-size: 200% 100%;
   animation: shimmer 4s ease-in-out infinite;
   pointer-events: none;
@@ -35,7 +35,7 @@ description: "Longer-form rendering articles and write-ups."
 }
 .series-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(255,159,28,.1);
+  box-shadow: 0 8px 24px rgba(var(--ds-accent-rgb),.1);
 }
 
 .part-link {
@@ -50,11 +50,11 @@ description: "Longer-form rendering articles and write-ups."
 .part-link:nth-child(3) { animation-delay: .45s; }
 .part-link:hover {
   transform: translateY(-2px);
-  border-color: rgba(255,159,28,.35) !important;
-  box-shadow: 0 4px 16px rgba(255,159,28,.08);
+  border-color: rgba(var(--ds-accent-rgb),.35) !important;
+  box-shadow: 0 4px 16px rgba(var(--ds-accent-rgb),.08);
 }
 .part-link:hover .part-title {
-  color: #FF9F1C;
+  color: var(--ds-accent);
 }
 
 .part-num {
@@ -62,7 +62,7 @@ description: "Longer-form rendering articles and write-ups."
 }
 .part-link:hover .part-num {
   transform: scale(1.1);
-  background: #FF9F1C !important;
+  background: var(--ds-accent) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -76,30 +76,30 @@ description: "Longer-form rendering articles and write-ups."
 
 ## Rendering Architecture Series
 
-<div class="series-card" style="margin:1.2em 0 2em;border-radius:12px;border:1.5px solid rgba(255,159,28,.18);overflow:hidden;background:linear-gradient(135deg,rgba(255,159,28,.03),transparent);">
-<div style="padding:1em 1.3em;border-bottom:1px solid rgba(255,159,28,.1);display:flex;align-items:center;gap:.8em;flex-wrap:wrap;">
+<div class="series-card" style="margin:1.2em 0 2em;border-radius:12px;border:1.5px solid rgba(var(--ds-accent-rgb),.18);overflow:hidden;background:linear-gradient(135deg,rgba(var(--ds-accent-rgb),.03),transparent);">
+<div style="padding:1em 1.3em;border-bottom:1px solid rgba(var(--ds-accent-rgb),.1);display:flex;align-items:center;gap:.8em;flex-wrap:wrap;">
 <span style="font-size:1.3em;">🏗️</span>
 <div>
 <div style="font-weight:800;font-size:1.05em;">Frame Graph</div>
 <div style="font-size:.82em;opacity:.55;">3 parts · theory → implementation → production engines</div>
 </div>
 <div style="margin-left:auto;display:flex;gap:.4em;">
-<span style="font-size:.72em;padding:.2em .5em;border-radius:5px;border:1px solid rgba(255,159,28,.15);background:rgba(255,159,28,.05);font-weight:600;">rendering</span>
-<span style="font-size:.72em;padding:.2em .5em;border-radius:5px;border:1px solid rgba(255,159,28,.15);background:rgba(255,159,28,.05);font-weight:600;">gpu</span>
-<span style="font-size:.72em;padding:.2em .5em;border-radius:5px;border:1px solid rgba(255,159,28,.15);background:rgba(255,159,28,.05);font-weight:600;">architecture</span>
+<span style="font-size:.72em;padding:.2em .5em;border-radius:5px;border:1px solid rgba(var(--ds-accent-rgb),.15);background:rgba(var(--ds-accent-rgb),.05);font-weight:600;">rendering</span>
+<span style="font-size:.72em;padding:.2em .5em;border-radius:5px;border:1px solid rgba(var(--ds-accent-rgb),.15);background:rgba(var(--ds-accent-rgb),.05);font-weight:600;">gpu</span>
+<span style="font-size:.72em;padding:.2em .5em;border-radius:5px;border:1px solid rgba(var(--ds-accent-rgb),.15);background:rgba(var(--ds-accent-rgb),.05);font-weight:600;">architecture</span>
 </div>
 </div>
 <div style="display:grid;gap:0;">
-<div class="part-link" onclick="window.location.href='frame-graph-theory/'" style="cursor:pointer;padding:.9em 1.3em;border-bottom:1px solid rgba(255,159,28,.07);display:flex;align-items:center;gap:1em;">
-<div class="part-num" style="width:2em;height:2em;border-radius:50%;background:#FF9F1C;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:.85em;flex-shrink:0;">I</div>
+<div class="part-link" onclick="window.location.href='frame-graph-theory/'" style="cursor:pointer;padding:.9em 1.3em;border-bottom:1px solid rgba(var(--ds-accent-rgb),.07);display:flex;align-items:center;gap:1em;">
+<div class="part-num" style="width:2em;height:2em;border-radius:50%;background:var(--ds-accent);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:.85em;flex-shrink:0;">I</div>
 <div style="flex:1;min-width:0;">
 <div class="part-title" style="font-weight:700;font-size:.95em;transition:color .18s ease;">Theory</div>
 <div style="font-size:.82em;opacity:.6;line-height:1.5;margin-top:.1em;">The theory behind frame graphs — how a DAG of passes and resources automates scheduling, barriers, and memory aliasing.</div>
 </div>
 <div style="font-size:.78em;opacity:.4;flex-shrink:0;">12 min read</div>
 </div>
-<div class="part-link" onclick="window.location.href='frame-graph-build-it/'" style="cursor:pointer;padding:.9em 1.3em;border-bottom:1px solid rgba(255,159,28,.07);display:flex;align-items:center;gap:1em;">
-<div class="part-num" style="width:2em;height:2em;border-radius:50%;background:#E8720C;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:.85em;flex-shrink:0;">II</div>
+<div class="part-link" onclick="window.location.href='frame-graph-build-it/'" style="cursor:pointer;padding:.9em 1.3em;border-bottom:1px solid rgba(var(--ds-accent-rgb),.07);display:flex;align-items:center;gap:1em;">
+<div class="part-num" style="width:2em;height:2em;border-radius:50%;background:var(--ds-warm);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:.85em;flex-shrink:0;">II</div>
 <div style="flex:1;min-width:0;">
 <div class="part-title" style="font-weight:700;font-size:.95em;transition:color .18s ease;">Build It</div>
 <div style="font-size:.82em;opacity:.6;line-height:1.5;margin-top:.1em;">Three iterations from blank file to working frame graph with automatic barriers and memory aliasing.</div>
@@ -107,7 +107,7 @@ description: "Longer-form rendering articles and write-ups."
 <div style="font-size:.78em;opacity:.4;flex-shrink:0;">30 min read</div>
 </div>
 <div class="part-link" onclick="window.location.href='frame-graph-production/'" style="cursor:pointer;padding:.9em 1.3em;display:flex;align-items:center;gap:1em;">
-<div class="part-num" style="width:2em;height:2em;border-radius:50%;background:#FFD166;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:.85em;flex-shrink:0;">III</div>
+<div class="part-num" style="width:2em;height:2em;border-radius:50%;background:var(--ds-highlight);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:.85em;flex-shrink:0;">III</div>
 <div style="flex:1;min-width:0;">
 <div class="part-title" style="font-weight:700;font-size:.95em;transition:color .18s ease;">Production Engines</div>
 <div style="font-size:.82em;opacity:.6;line-height:1.5;margin-top:.1em;">How UE5 and Frostbite implement frame graphs at scale.</div>
@@ -115,9 +115,9 @@ description: "Longer-form rendering articles and write-ups."
 <div style="font-size:.78em;opacity:.4;flex-shrink:0;">9 min read</div>
 </div>
 </div>
-<div style="padding:.6em 1.3em;border-top:1px solid rgba(255,159,28,.1);background:rgba(255,159,28,.02);display:flex;align-items:center;gap:.6em;">
-<div style="width:100%;height:4px;border-radius:2px;background:rgba(255,159,28,.08);overflow:hidden;">
-<div style="width:100%;height:100%;border-radius:2px;background:linear-gradient(90deg,#FF9F1C,#E8720C,#FFD166);"></div>
+<div style="padding:.6em 1.3em;border-top:1px solid rgba(var(--ds-accent-rgb),.1);background:rgba(var(--ds-accent-rgb),.02);display:flex;align-items:center;gap:.6em;">
+<div style="width:100%;height:4px;border-radius:2px;background:rgba(var(--ds-accent-rgb),.08);overflow:hidden;">
+<div style="width:100%;height:100%;border-radius:2px;background:linear-gradient(90deg,var(--ds-accent),var(--ds-warm),var(--ds-highlight));"></div>
 </div>
 <span style="font-size:.75em;opacity:.45;white-space:nowrap;font-weight:600;">3 / 3</span>
 </div>

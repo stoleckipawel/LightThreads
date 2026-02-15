@@ -10,7 +10,7 @@
     {{ else if hasPrefix . "-" }}
       <div class="cd-line cd-remove">{{ . }}</div>
     {{ else if hasPrefix . "@" }}
-      <div class="cd-line" style="color:#8b5cf6;font-weight:600;opacity:.8">{{ . }}</div>
+      <div class="cd-line" style="color:var(--ds-code);font-weight:600;opacity:.8">{{ . }}</div>
     {{ else }}
       <div class="cd-line cd-context">{{ . }}</div>
     {{ end }}

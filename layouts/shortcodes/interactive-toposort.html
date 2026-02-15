@@ -46,7 +46,7 @@
           </div>
           <div class="topo-rule" id="topo-rule-5">
             <div class="topo-rule-num">5</div>
-            <div class="topo-rule-body"><strong>Repeat</strong> 2–4; output &lt; passes → <span style="color:#ef4444">cycle</span></div>
+            <div class="topo-rule-body"><strong>Repeat</strong> 2–4; output &lt; passes → <span style="color:var(--ds-danger)">cycle</span></div>
           </div>
         </div>
       </div>
@@ -79,14 +79,14 @@
 .topo-rule-num{width:18px;height:18px;border-radius:50%;background:var(--color-neutral-300,#d4d4d4);color:var(--color-neutral-700);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8em;flex-shrink:0;margin-top:1px;transition:background .3s,color .3s}
 :is(.dark,.scheme-congo) .topo-rule-num{background:var(--color-neutral-700);color:var(--color-neutral-400)}
 .topo-rule-body{flex:1}
-.topo-rule.active{background:rgba(59,130,246,.12)}
-:is(.dark,.scheme-congo) .topo-rule.active{background:rgba(59,130,246,.15)}
-.topo-rule.active .topo-rule-num{background:#3b82f6;color:#fff}
-.topo-explain{font-size:.82em;line-height:1.6;margin:.5em 0;padding:.5em .8em;border-radius:.375rem;border-left:3px solid #3b82f6;background:var(--color-neutral-100,#f5f5f5);min-height:2em}
-:is(.dark,.scheme-congo) .topo-explain{background:var(--color-neutral-900);border-color:#3b82f6}
+.topo-rule.active{background:rgba(var(--ds-info-rgb),.12)}
+:is(.dark,.scheme-congo) .topo-rule.active{background:rgba(var(--ds-info-rgb),.15)}
+.topo-rule.active .topo-rule-num{background:var(--ds-info);color:#fff}
+.topo-explain{font-size:.82em;line-height:1.6;margin:.5em 0;padding:.5em .8em;border-radius:.375rem;border-left:3px solid var(--ds-info);background:var(--color-neutral-100,#f5f5f5);min-height:2em}
+:is(.dark,.scheme-congo) .topo-explain{background:var(--color-neutral-900);border-color:var(--ds-info)}
 .widget-btn-row{display:flex;gap:.5em;align-items:center}
-.widget-btn-primary{background:#3b82f6!important;color:#fff!important;border-color:#3b82f6!important;box-shadow:0 2px 8px rgba(59,130,246,.3)!important;font-weight:700!important}
-.widget-btn-primary:hover{background:#2563eb!important}
+.widget-btn-primary{background:var(--ds-info)!important;color:#fff!important;border-color:var(--ds-info)!important;box-shadow:0 2px 8px rgba(var(--ds-info-rgb),.3)!important;font-weight:700!important}
+.widget-btn-primary:hover{background:var(--ds-info-dark)!important}
 .widget-btn-primary:disabled{background:#6b7280!important;border-color:#6b7280!important;cursor:default;box-shadow:none!important}
 #topo-svg{width:100%;display:block;margin:0 auto}
 #topo-svg .node rect{rx:8;ry:8;stroke-width:2}
@@ -99,7 +99,7 @@
 .topo-example-bar{display:flex;align-items:center;gap:.5em;margin-bottom:.75em;flex-wrap:wrap}
 .topo-example-label{font-size:.82em;font-weight:700;color:var(--color-neutral-500)}
 .topo-ex-btn{font-size:.78em!important;padding:.35em .9em!important;border-radius:999px!important;font-weight:600!important}
-.topo-ex-active{background:#3b82f6!important;color:#fff!important;border-color:#3b82f6!important;box-shadow:0 0 0 2px rgba(59,130,246,.25)!important}
+.topo-ex-active{background:var(--ds-info)!important;color:#fff!important;border-color:var(--ds-info)!important;box-shadow:0 0 0 2px rgba(var(--ds-info-rgb),.25)!important}
 </style>
 
 <script>
@@ -162,7 +162,7 @@ var EXAMPLES=[
 
 var curExampleIdx=0;
 var passes,edgeDefs;
-var COL={wait:"#6b7280",queued:"#f59e0b",proc:"#3b82f6",done:"#22c55e",edge:"#3b82f6",edgeDim:"#374151",edgeConsumed:"#ef4444"};
+var COL={wait:"#6b7280",queued:"var(--ds-warn)",proc:"var(--ds-info)",done:"var(--ds-success)",edge:"var(--ds-info)",edgeDim:"#374151",edgeConsumed:"var(--ds-danger)"};
 var inDeg,queue,sorted,step,done,currentPopped,consumedEdges,activeRule,flashEdges;
 
 function loadExample(idx){
@@ -276,7 +276,7 @@ function render(){
     r.setAttribute("x",p.x);r.setAttribute("y",p.y);
     r.setAttribute("width",NW);r.setAttribute("height",NH);
     r.setAttribute("fill",col);
-    r.setAttribute("stroke",col===COL.wait?"#4b5563":col===COL.queued?"#d97706":col===COL.proc?"#2563eb":"#16a34a");
+    r.setAttribute("stroke",col===COL.wait?"#4b5563":col===COL.queued?"var(--ds-warn-dark)":col===COL.proc?"var(--ds-info-dark)":"var(--ds-success-dark)");
     var t=document.createElementNS(NS,"text");
     t.setAttribute("x",cx(p));t.setAttribute("y",cy(p));
     t.textContent=p.name;
@@ -287,7 +287,7 @@ function render(){
       var bx=p.x+NW-4,by=p.y-4;
       var bgC=document.createElementNS(NS,"circle");
       bgC.setAttribute("cx",bx);bgC.setAttribute("cy",by);bgC.setAttribute("r","11");
-      bgC.setAttribute("fill",inDeg[p.id]===0?"#f59e0b":"#ef4444");
+      bgC.setAttribute("fill",inDeg[p.id]===0?"var(--ds-warn)":"var(--ds-danger)");
       bgC.setAttribute("stroke","#fff");bgC.setAttribute("stroke-width","2");
       var dt=document.createElementNS(NS,"text");
       dt.setAttribute("class","deg-text");
@@ -298,7 +298,7 @@ function render(){
     }else{
       var ck=document.createElementNS(NS,"text");
       ck.setAttribute("x",p.x+NW-4);ck.setAttribute("y",p.y-2);
-      ck.setAttribute("text-anchor","middle");ck.setAttribute("fill","#22c55e");
+      ck.setAttribute("text-anchor","middle");ck.setAttribute("fill","var(--ds-success)");
       ck.style.font="bold 14px sans-serif";ck.textContent="\u2713";
       g.append(ck);
     }
@@ -307,9 +307,9 @@ function render(){
 
   // Update state bar
   document.getElementById("topo-queue").innerHTML=
-    queue.length?queue.map(function(i){return '<span style="color:#f59e0b;font-weight:700">'+passes[i].name+'</span>'}).join(", "):"<em>(empty)</em>";
+    queue.length?queue.map(function(i){return '<span style="color:var(--ds-warn);font-weight:700">'+passes[i].name+'</span>'}).join(", "):"<em>(empty)</em>";
   document.getElementById("topo-output").innerHTML=
-    sorted.length?sorted.map(function(i){return '<span style="color:#22c55e;font-weight:700">'+passes[i].name+'</span>'}).join(" \u2192 "):"<em>(empty)</em>";
+    sorted.length?sorted.map(function(i){return '<span style="color:var(--ds-success);font-weight:700">'+passes[i].name+'</span>'}).join(" \u2192 "):"<em>(empty)</em>";
 }
 
 window.topoNext=function(){
@@ -356,11 +356,11 @@ window.topoNext=function(){
   // Build explanation with rule references
   var html="";
   // Rule 2: Pop
-  html+="<strong style='color:#3b82f6'>\u25B6 Rule 2:</strong> Popped <strong>"+passes[cur].name+"</strong> (in-degree was 0 \u2192 safe to execute). Added to output.<br>";
+  html+="<strong style='color:var(--ds-info)'>\u25B6 Rule 2:</strong> Popped <strong>"+passes[cur].name+"</strong> (in-degree was 0 \u2192 safe to execute). Added to output.<br>";
 
   // Rule 3: Consume
   if(outEdges.length>0){
-    html+="<strong style='color:#ef4444'>\u25B6 Rule 3:</strong> Consumed "+outEdges.length+" outgoing edge"+(outEdges.length>1?"s":"")+": ";
+    html+="<strong style='color:var(--ds-danger)'>\u25B6 Rule 3:</strong> Consumed "+outEdges.length+" outgoing edge"+(outEdges.length>1?"s":"")+": ";
     html+=outEdges.map(function(e){return '<span style="text-decoration:line-through;opacity:.6">'+e.label+'</span>'}).join(", ");
     html+=". Decremented: "+decremented.map(function(d){return "<strong>"+d.name+"</strong> \u2192 "+d.deg}).join(", ")+". ";
   }else{
@@ -369,7 +369,7 @@ window.topoNext=function(){
 
   // Rule 4: Check
   if(newlyQueued.length>0){
-    html+="<br><strong style='color:#f59e0b'>\u25B6 Rule 4:</strong> "+newlyQueued.join(", ")+" hit in-degree 0 \u2192 <strong>queued!</strong> "+(newlyQueued.length===1?"Its":"Their")+" dependencies are all satisfied.";
+    html+="<br><strong style='color:var(--ds-warn)'>\u25B6 Rule 4:</strong> "+newlyQueued.join(", ")+" hit in-degree 0 \u2192 <strong>queued!</strong> "+(newlyQueued.length===1?"Its":"Their")+" dependencies are all satisfied.";
   }else if(outEdges.length>0){
     html+="<br><strong>\u25B6 Rule 4:</strong> No successor reached 0 yet \u2014 they still have other unsatisfied dependencies.";
   }
@@ -381,7 +381,7 @@ window.topoNext=function(){
   // Check if done
   if(queue.length===0&&sorted.length===passes.length){
     done=true;
-    html+="<br><br><strong style='color:#22c55e'>\u2713 Complete!</strong> Execution order: "+sorted.map(function(i){return passes[i].name}).join(" \u2192 ")+". Every dependency respected.";
+    html+="<br><br><strong style='color:var(--ds-success)'>\u2713 Complete!</strong> Execution order: "+sorted.map(function(i){return passes[i].name}).join(" \u2192 ")+". Every dependency respected.";
     document.getElementById("topo-explain").innerHTML=html;
     document.getElementById("topo-next").disabled=true;
     highlightRule(5);

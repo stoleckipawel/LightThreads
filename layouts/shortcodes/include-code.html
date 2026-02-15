@@ -147,7 +147,7 @@
       } else if (line.includes("ALIVE")) {
         span.style.color = "#7ee787";
       } else if (line.includes("DEAD")) {
-        span.style.color = "#f85149";
+        span.style.color = "var(--ds-danger)";
       } else if (line.startsWith("  -")) {
         span.style.color = "#c9d1d9";
         span.style.paddingLeft = "4px";
@@ -162,10 +162,10 @@
         span.style.marginTop = "4px";
         span.style.paddingTop = "4px";
       } else if (line.includes("Exit code:")) {
-        span.style.color = "#f85149";
+        span.style.color = "var(--ds-danger)";
         span.style.fontWeight = "bold";
       } else if (currentSection === "compiler" || currentSection === "error") {
-        span.style.color = "#f85149";
+        span.style.color = "var(--ds-danger)";
       } else {
         span.style.color = "#c9d1d9";
       }

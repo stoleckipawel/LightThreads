@@ -3,7 +3,7 @@
   <div class="widget-header">
     <span class="widget-icon">🔬</span>
     <span class="widget-title">Interactive: Split Barriers</span>
-    <p class="widget-hint">A barrier transitions a resource between states (e.g. render target → shader read). A <strong>regular</strong> barrier stalls the GPU at the transition point. A <strong>split</strong> barrier spreads it over a gap — the GPU overlaps other work in between. Drag the <span style="color:#ef4444;font-weight:700">BEGIN</span> marker left to widen the gap. Click any pass to reassign <span style="color:#ef4444;font-weight:700">producer</span> / <span style="color:#3b82f6;font-weight:700">consumer</span>.</p>
+    <p class="widget-hint">A barrier transitions a resource between states (e.g. render target → shader read). A <strong>regular</strong> barrier stalls the GPU at the transition point. A <strong>split</strong> barrier spreads it over a gap — the GPU overlaps other work in between. Drag the <span style="color:var(--ds-danger);font-weight:700">BEGIN</span> marker left to widen the gap. Click any pass to reassign <span style="color:var(--ds-danger);font-weight:700">producer</span> / <span style="color:var(--ds-info);font-weight:700">consumer</span>.</p>
   </div>
   <div class="split-example-bar">
     <button class="split-ex-btn split-ex-active" onclick="splitSetExample(0)">SSAO → Lighting</button>
@@ -24,17 +24,17 @@
 :is(.dark,.scheme-congo) #split-svg{border-color:var(--color-neutral-700)}
 .split-stats{display:flex;gap:.6em;flex-wrap:wrap;margin-top:.5em;font-family:ui-monospace,monospace;font-size:.8em}
 .split-stat{padding:.3em .6em;border-radius:.25em;font-weight:600}
-.split-stat-bad{background:#ef4444;color:#fff}
-.split-stat-ok{background:#f59e0b;color:#fff}
-.split-stat-good{background:#22c55e;color:#fff}
+.split-stat-bad{background:var(--ds-danger);color:#fff}
+.split-stat-ok{background:var(--ds-warn);color:#fff}
+.split-stat-good{background:var(--ds-success);color:#fff}
 .split-stat-neutral{background:var(--color-neutral-200,#e5e5e5);color:var(--color-neutral-700)}
 :is(.dark,.scheme-congo) .split-stat-neutral{background:var(--color-neutral-700);color:var(--color-neutral-300)}
-.split-explain{font-size:.84em;line-height:1.65;margin:.5em 0;padding:.5em .8em;border-radius:.375rem;border-left:3px solid #3b82f6;background:var(--color-neutral-100,#f5f5f5);min-height:2em}
-:is(.dark,.scheme-congo) .split-explain{background:var(--color-neutral-900);border-color:#3b82f6}
+.split-explain{font-size:.84em;line-height:1.65;margin:.5em 0;padding:.5em .8em;border-radius:.375rem;border-left:3px solid var(--ds-info);background:var(--color-neutral-100,#f5f5f5);min-height:2em}
+:is(.dark,.scheme-congo) .split-explain{background:var(--color-neutral-900);border-color:var(--ds-info)}
 .split-example-bar{display:flex;gap:.5em;flex-wrap:wrap;margin-bottom:.5em}
 .split-ex-btn{padding:.35em .9em;border-radius:999px;border:1.5px solid var(--color-neutral-300,#d1d5db);background:var(--color-neutral-100,#f5f5f5);font-size:.82em;font-weight:600;cursor:pointer;color:var(--color-neutral-700,#374151);transition:all .15s}
-.split-ex-btn:hover{border-color:#3b82f6;color:#3b82f6}
-.split-ex-active{background:#3b82f6!important;color:#fff!important;border-color:#3b82f6!important;box-shadow:0 0 0 2px rgba(59,130,246,.25)!important}
+.split-ex-btn:hover{border-color:var(--ds-info);color:var(--ds-info)}
+.split-ex-active{background:var(--ds-info)!important;color:#fff!important;border-color:var(--ds-info)!important;box-shadow:0 0 0 2px rgba(var(--ds-info-rgb),.25)!important}
 :is(.dark,.scheme-congo) .split-ex-btn{border-color:var(--color-neutral-600);color:var(--color-neutral-300);background:var(--color-neutral-700)}
 </style>
 
@@ -48,11 +48,11 @@ var EXAMPLES=[
     name:"SSAO → Lighting",
     passes:[
       {name:"Depth",dur:1.2,color:"#6b7280"},
-      {name:"GBuffer",dur:2.0,color:"#3b82f6"},
-      {name:"SSAO",dur:1.5,color:"#8b5cf6"},
+      {name:"GBuffer",dur:2.0,color:"var(--ds-info)"},
+      {name:"SSAO",dur:1.5,color:"var(--ds-code)"},
       {name:"Shadows",dur:2.2,color:"#64748b"},
-      {name:"Lighting",dur:2.5,color:"#f59e0b"},
-      {name:"Tonemap",dur:0.8,color:"#22c55e"}
+      {name:"Lighting",dur:2.5,color:"var(--ds-warn)"},
+      {name:"Tonemap",dur:0.8,color:"var(--ds-success)"}
     ],
     srcPass:2,dstPass:4,
     srcName:"SSAO",dstName:"Lighting",
@@ -66,8 +66,8 @@ var EXAMPLES=[
       {name:"Shadow CSM2",dur:0.8,color:"#334155"},
       {name:"Depth",dur:1.5,color:"#6b7280"},
       {name:"Sky",dur:0.6,color:"#38bdf8"},
-      {name:"Forward",dur:3.0,color:"#f59e0b"},
-      {name:"Post",dur:1.0,color:"#22c55e"}
+      {name:"Forward",dur:3.0,color:"var(--ds-warn)"},
+      {name:"Post",dur:1.0,color:"var(--ds-success)"}
     ],
     srcPass:2,dstPass:5,
     srcName:"Shadow CSM2",dstName:"Forward",
@@ -76,12 +76,12 @@ var EXAMPLES=[
   {
     name:"Bloom → Composite",
     passes:[
-      {name:"GBuffer",dur:2.5,color:"#3b82f6"},
-      {name:"Lighting",dur:2.0,color:"#f59e0b"},
+      {name:"GBuffer",dur:2.5,color:"var(--ds-info)"},
+      {name:"Lighting",dur:2.0,color:"var(--ds-warn)"},
       {name:"Bloom Down",dur:1.0,color:"#a855f7"},
-      {name:"DOF",dur:1.5,color:"#ec4899"},
-      {name:"TAA",dur:0.8,color:"#14b8a6"},
-      {name:"Composite",dur:0.6,color:"#22c55e"}
+      {name:"DOF",dur:1.5,color:"var(--ds-pink)"},
+      {name:"TAA",dur:0.8,color:"var(--ds-teal)"},
+      {name:"Composite",dur:0.6,color:"var(--ds-success)"}
     ],
     srcPass:2,dstPass:5,
     srcName:"Bloom Down",dstName:"Composite",
@@ -142,8 +142,8 @@ function render(){
 
   // Defs for arrow markers
   var defs=el("defs",{});
-  defs.innerHTML='<marker id="split-al" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M10,0 L0,5 L10,10 z" fill="#22c55e"/></marker>'+
-    '<marker id="split-ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#22c55e"/></marker>';
+  defs.innerHTML='<marker id="split-al" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M10,0 L0,5 L10,10 z" fill="var(--ds-success)"/></marker>'+
+    '<marker id="split-ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--ds-success)"/></marker>';
   svg.prepend(defs);
 
   // === ROW 1: Regular barrier ===
@@ -154,8 +154,8 @@ function render(){
     var x=left+t1*scale+1;
     var w=p.dur*scale-2;
     svg.append(el("rect",{x:x,y:regY,width:w,height:laneH,rx:5,fill:p.color,opacity:.85}));
-    if(i===srcPass) svg.append(el("rect",{x:x-1,y:regY-1,width:w+2,height:laneH+2,rx:6,fill:"none",stroke:"#ef4444","stroke-width":2}));
-    if(i===dstPass) svg.append(el("rect",{x:x-1,y:regY-1,width:w+2,height:laneH+2,rx:6,fill:"none",stroke:"#3b82f6","stroke-width":2}));
+    if(i===srcPass) svg.append(el("rect",{x:x-1,y:regY-1,width:w+2,height:laneH+2,rx:6,fill:"none",stroke:"var(--ds-danger)","stroke-width":2}));
+    if(i===dstPass) svg.append(el("rect",{x:x-1,y:regY-1,width:w+2,height:laneH+2,rx:6,fill:"none",stroke:"var(--ds-info)","stroke-width":2}));
     svg.append(txt(x+w/2,regY+laneH/2+4,p.name,"#fff","bold 11px ui-monospace,monospace","middle"));
     svg.append(txt(x+w/2,regY+laneH+12,p.dur.toFixed(1)+"ms",mutedC,"10px ui-monospace,monospace","middle"));
     t1+=p.dur;
@@ -166,9 +166,9 @@ function render(){
   for(var bi=0;bi<=srcPass;bi++)regBarrierX+=passes[bi].dur*scale;
   // Stall indicator
   var stallW=12;
-  svg.append(el("rect",{x:regBarrierX-stallW/2,y:regY-2,width:stallW,height:laneH+4,fill:"#ef4444",opacity:.25,rx:3}));
-  svg.append(el("line",{x1:regBarrierX,y1:regY-5,x2:regBarrierX,y2:regY+laneH+5,stroke:"#ef4444","stroke-width":3}));
-  svg.append(txt(regBarrierX,regY-8,"STALL",dk?"#f87171":"#ef4444","bold 9px ui-monospace,monospace","middle"));
+  svg.append(el("rect",{x:regBarrierX-stallW/2,y:regY-2,width:stallW,height:laneH+4,fill:"var(--ds-danger)",opacity:.25,rx:3}));
+  svg.append(el("line",{x1:regBarrierX,y1:regY-5,x2:regBarrierX,y2:regY+laneH+5,stroke:"var(--ds-danger)","stroke-width":3}));
+  svg.append(txt(regBarrierX,regY-8,"STALL",dk?"#f87171":"var(--ds-danger)","bold 9px ui-monospace,monospace","middle"));
 
   // === ROW 2: Split barrier ===
   var splitY=regY+laneH+40;
@@ -184,12 +184,12 @@ function render(){
     var w=p.dur*scale-2;
     svg.append(el("rect",{x:x,y:splitY,width:w,height:laneH,rx:5,fill:p.color,opacity:.85}));
     if(i===srcPass){
-      svg.append(el("rect",{x:x-1,y:splitY-1,width:w+2,height:laneH+2,rx:6,fill:"none",stroke:"#ef4444","stroke-width":2.5}));
-      svg.append(txt(x+w/2,splitY-6,"SRC","#ef4444","bold 9px ui-monospace,monospace","middle"));
+      svg.append(el("rect",{x:x-1,y:splitY-1,width:w+2,height:laneH+2,rx:6,fill:"none",stroke:"var(--ds-danger)","stroke-width":2.5}));
+      svg.append(txt(x+w/2,splitY-6,"SRC","var(--ds-danger)","bold 9px ui-monospace,monospace","middle"));
     }
     if(i===dstPass){
-      svg.append(el("rect",{x:x-1,y:splitY-1,width:w+2,height:laneH+2,rx:6,fill:"none",stroke:"#3b82f6","stroke-width":2.5}));
-      svg.append(txt(x+w/2,splitY-6,"DST","#3b82f6","bold 9px ui-monospace,monospace","middle"));
+      svg.append(el("rect",{x:x-1,y:splitY-1,width:w+2,height:laneH+2,rx:6,fill:"none",stroke:"var(--ds-info)","stroke-width":2.5}));
+      svg.append(txt(x+w/2,splitY-6,"DST","var(--ds-info)","bold 9px ui-monospace,monospace","middle"));
     }
     svg.append(txt(x+w/2,splitY+laneH/2+4,p.name,"#fff","bold 11px ui-monospace,monospace","middle"));
     var hit=el("rect",{x:x,y:splitY-2,width:w,height:laneH+4,fill:"transparent",style:"cursor:pointer",rx:5});
@@ -207,22 +207,22 @@ function render(){
 
   // Overlap shading
   if(splitPos<0.95){
-    svg.append(el("rect",{x:beginX,y:splitY-2,width:endX-beginX,height:laneH+4,fill:"#22c55e",opacity:.12,rx:4}));
+    svg.append(el("rect",{x:beginX,y:splitY-2,width:endX-beginX,height:laneH+4,fill:"var(--ds-success)",opacity:.12,rx:4}));
     // Overlap arrow
     if(endX-beginX>30){
-      svg.append(el("line",{x1:beginX+8,y1:splitY+laneH+14,x2:endX-8,y2:splitY+laneH+14,stroke:"#22c55e","stroke-width":2,"marker-start":"url(#split-al)","marker-end":"url(#split-ar)"}));
-      svg.append(txt((beginX+endX)/2,splitY+laneH+28,"GPU overlaps here","#22c55e","bold 10px ui-monospace,monospace","middle"));
+      svg.append(el("line",{x1:beginX+8,y1:splitY+laneH+14,x2:endX-8,y2:splitY+laneH+14,stroke:"var(--ds-success)","stroke-width":2,"marker-start":"url(#split-al)","marker-end":"url(#split-ar)"}));
+      svg.append(txt((beginX+endX)/2,splitY+laneH+28,"GPU overlaps here","var(--ds-success)","bold 10px ui-monospace,monospace","middle"));
     }
   }
 
   // BEGIN marker (draggable)
-  svg.append(el("line",{x1:beginX,y1:splitY-8,x2:beginX,y2:splitY+laneH+10,stroke:"#ef4444","stroke-width":2.5,"stroke-dasharray":"4,2"}));
-  svg.append(el("rect",{x:beginX-24,y:splitY+laneH+35,width:48,height:18,rx:4,fill:"#ef4444"}));
+  svg.append(el("line",{x1:beginX,y1:splitY-8,x2:beginX,y2:splitY+laneH+10,stroke:"var(--ds-danger)","stroke-width":2.5,"stroke-dasharray":"4,2"}));
+  svg.append(el("rect",{x:beginX-24,y:splitY+laneH+35,width:48,height:18,rx:4,fill:"var(--ds-danger)"}));
   svg.append(txt(beginX,splitY+laneH+48,"BEGIN","#fff","bold 9px ui-monospace,monospace","middle"));
 
   // END marker (fixed at destination start)
-  svg.append(el("line",{x1:endX,y1:splitY-8,x2:endX,y2:splitY+laneH+10,stroke:"#3b82f6","stroke-width":2.5,"stroke-dasharray":"4,2"}));
-  svg.append(el("rect",{x:endX-20,y:splitY+laneH+35,width:40,height:18,rx:4,fill:"#3b82f6"}));
+  svg.append(el("line",{x1:endX,y1:splitY-8,x2:endX,y2:splitY+laneH+10,stroke:"var(--ds-info)","stroke-width":2.5,"stroke-dasharray":"4,2"}));
+  svg.append(el("rect",{x:endX-20,y:splitY+laneH+35,width:40,height:18,rx:4,fill:"var(--ds-info)"}));
   svg.append(txt(endX,splitY+laneH+48,"END","#fff","bold 9px ui-monospace,monospace","middle"));
 
   // Drag hit area
@@ -326,7 +326,7 @@ function updateInfo(){
       "Meanwhile, the "+gapPasses+" pass"+(gapPasses!==1?"es":"")+" in the gap run"+(gapPasses===1?"s":"")+" — they don't touch the transitioning resource, so there's no conflict. "+
       "END (invalidate) fires just before "+dstName+", ensuring caches are ready. "+
       "<br><br><strong>Result:</strong> The GPU never stalls — the transition cost is fully hidden."+
-      (overlapPct>80?" <strong style='color:#22c55e'>Maximum overlap achieved.</strong>":"");
+      (overlapPct>80?" <strong style='color:var(--ds-success)'>Maximum overlap achieved.</strong>":"");
   }
 }
 

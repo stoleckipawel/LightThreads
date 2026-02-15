@@ -2,15 +2,90 @@
  * ─────────────────────────────────────────────────────────────────
  * Thread Orange:   #FF9F1C  (255, 159, 28)  — primary accent
  * Ray Gold:        #FFD166  (255, 209, 102) — highlight / glow
+ * Burnt Orange:    #E8720C  (232, 114, 12)  — warm secondary
+ * Light Orange:    #FFB347  (255, 179, 71)  — soft accent
  * Graphite Black:  #0B0B0E  (11, 11, 14)    — deep background
  * Burnt Umber:     #3A1700  (58, 23, 0)     — secondary dark
  * Warm White:      #F5F5F7  (245, 245, 247) — primary text
  * Muted Gray:      #A1A1AA  (161, 161, 170) — muted text
  * ─────────────────────────────────────────────────────────────────
+ *
+ *  SINGLE SOURCE OF TRUTH for brand colours.
+ *  Every CSS / shortcode / page should reference --ds-* variables
+ *  instead of hardcoding hex or rgba values.
+ * ─────────────────────────────────────────────────────────────────
  */
 
 :root {
-  /* Neutral scale — Graphite → Warm White */
+  /* ── Deep Spark brand palette (hex) ──────────────────────────── */
+  --ds-orange:      #FF9F1C;    /* Thread Orange — primary accent  */
+  --ds-gold:        #FFD166;    /* Ray Gold — highlight / glow     */
+  --ds-burnt:       #E8720C;    /* Burnt Orange — warm secondary   */
+  --ds-light:       #FFB347;    /* Light Orange — soft accent      */
+
+  /* ── RGB triplets for rgba() usage ───────────────────────────── */
+  /*    Usage: rgba(var(--ds-orange-rgb), 0.15)                    */
+  --ds-orange-rgb:  255, 159, 28;
+  --ds-gold-rgb:    255, 209, 102;
+  --ds-burnt-rgb:   232, 114, 12;
+  --ds-light-rgb:   255, 179, 71;
+
+  /* ── Functional / semantic tokens ────────────────────────────── */
+  /*    Map brand colours to roles so changes propagate everywhere */
+  --ds-accent:           var(--ds-orange);
+  --ds-accent-rgb:       var(--ds-orange-rgb);
+  --ds-highlight:        var(--ds-gold);
+  --ds-highlight-rgb:    var(--ds-gold-rgb);
+  --ds-warm:             var(--ds-burnt);
+  --ds-warm-rgb:         var(--ds-burnt-rgb);
+  --ds-soft:             var(--ds-light);
+  --ds-soft-rgb:         var(--ds-light-rgb);
+
+  /* ── Semantic status tokens ─────────────────────────────────── */
+  --ds-success:       #22c55e;
+  --ds-success-dark:  #16a34a;
+  --ds-success-rgb:   34, 197, 94;
+  --ds-success-light: #4ade80;       /* dark-mode text            */
+  --ds-danger:        #ef4444;
+  --ds-danger-dark:   #dc2626;
+  --ds-danger-rgb:    239, 68, 68;
+  --ds-warn:          #f59e0b;
+  --ds-warn-dark:     #d97706;
+  --ds-warn-rgb:      245, 158, 11;
+  --ds-warn-light:    #fbbf24;       /* dark-mode text            */
+
+  /* ── Informational / code accent tokens ──────────────────────── */
+  --ds-info:          #3b82f6;
+  --ds-info-dark:     #2563eb;
+  --ds-info-rgb:      59, 130, 246;
+  --ds-info-light:    #60a5fa;       /* dark-mode text            */
+  --ds-code:          #8b5cf6;
+  --ds-code-dark:     #7c3aed;
+  --ds-code-rgb:      139, 92, 246;
+  --ds-code-light:    #a78bfa;       /* dark-mode text            */
+
+  /* ── Misc semantic tag colours ───────────────────────────────── */
+  --ds-pink:          #ec4899;
+  --ds-pink-rgb:      236, 72, 153;
+  --ds-pink-light:    #f472b6;
+  --ds-indigo:        #6366f1;
+  --ds-indigo-rgb:    99, 102, 241;
+  --ds-indigo-light:  #818cf8;
+  --ds-teal:          #14b8a6;
+  --ds-teal-rgb:      20, 184, 166;
+  --ds-teal-light:    #2dd4bf;
+  --ds-slate:         #475569;
+  --ds-slate-rgb:     100, 116, 139;
+  --ds-slate-light:   #94a3b8;
+
+  /* ── Multi-part navigation colours (article-nav rail parts) ─── */
+  --ds-part-0:     var(--ds-orange);
+  --ds-part-1:     var(--ds-gold);
+  --ds-part-2:     var(--ds-success);
+  --ds-part-3:     var(--ds-burnt);
+  --ds-part-4:     var(--ds-danger);
+
+  /* ── Neutral scale — Graphite → Warm White ───────────────────── */
   --color-neutral: 245, 245, 247;               /* Warm White (text) */
   --color-neutral-50: 245, 245, 247;            /* Warm White */
   --color-neutral-100: 230, 230, 234;

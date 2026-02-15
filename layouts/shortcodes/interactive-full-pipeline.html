@@ -1,6 +1,6 @@
 {{/* Interactive Full Pipeline Explorer — minimap + focus view */}}
 <div class="interactive-widget" id="pipeline-widget">
-  <div class="widget-header" style="border-top-color:#8b5cf6">
+  <div class="widget-header" style="border-top-color:var(--ds-code)">
     <span class="widget-icon">🎛️</span>
     <span class="widget-title">Interactive: Full Pipeline Explorer</span>
     <p class="widget-hint">The minimap shows the full render graph. Click any pass to focus — the detail view shows its neighbors, resources, and how the compiler transforms it.</p>
@@ -53,7 +53,7 @@
 .pipe-example-bar{display:flex;align-items:center;gap:.5em;margin-bottom:.6em;flex-wrap:wrap}
 .pipe-example-label{font-size:.82em;font-weight:700;opacity:.6}
 .pipe-ex-btn{font-size:.78em!important;padding:.35em .9em!important;border-radius:999px!important;font-weight:600!important}
-.pipe-ex-active{background:#8b5cf6!important;color:#fff!important;border-color:#8b5cf6!important;box-shadow:0 0 0 2px rgba(139,92,246,.25)!important}
+.pipe-ex-active{background:var(--ds-code)!important;color:#fff!important;border-color:var(--ds-code)!important;box-shadow:0 0 0 2px rgba(var(--ds-code-rgb),.25)!important}
 
 .pipe-controls{margin:.5em 0 .8em;padding:.6em .8em;border-radius:8px;background:var(--color-neutral-100,#f5f5f5);border:1px solid var(--color-neutral-200,#e5e5e5)}
 :is(.dark,.scheme-congo) .pipe-controls{background:var(--color-neutral-900);border-color:var(--color-neutral-700)}
@@ -62,7 +62,7 @@
 .pipe-toggle input{display:none}
 .pipe-toggle-slider{width:32px;height:18px;background:var(--color-neutral-300,#d1d5db);border-radius:999px;position:relative;transition:background .2s;flex-shrink:0}
 .pipe-toggle-slider::after{content:"";position:absolute;width:14px;height:14px;background:#fff;border-radius:50%;top:2px;left:2px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.15)}
-.pipe-toggle input:checked+.pipe-toggle-slider{background:#8b5cf6}
+.pipe-toggle input:checked+.pipe-toggle-slider{background:var(--ds-code)}
 .pipe-toggle input:checked+.pipe-toggle-slider::after{transform:translateX(14px)}
 :is(.dark,.scheme-congo) .pipe-toggle-slider{background:var(--color-neutral-600)}
 .pipe-toggle-label{font-weight:600;color:var(--color-neutral-700,#374151)}
@@ -78,10 +78,10 @@
 #pipe-minimap{display:block;min-height:120px}
 
 /* Focus view */
-.pipe-focus-wrap{margin:.7em 0;border:2px solid rgba(139,92,246,.25);border-radius:10px;overflow:hidden;background:rgba(139,92,246,.02);transition:border-color .3s}
-.pipe-focus-wrap.pipe-focus-active{border-color:rgba(139,92,246,.5)}
-:is(.dark,.scheme-congo) .pipe-focus-wrap{background:rgba(139,92,246,.05)}
-.pipe-focus-header{padding:.5em .9em;border-bottom:1px solid rgba(139,92,246,.15);display:flex;align-items:center;gap:.6em;flex-wrap:wrap}
+.pipe-focus-wrap{margin:.7em 0;border:2px solid rgba(var(--ds-code-rgb),.25);border-radius:10px;overflow:hidden;background:rgba(var(--ds-code-rgb),.02);transition:border-color .3s}
+.pipe-focus-wrap.pipe-focus-active{border-color:rgba(var(--ds-code-rgb),.5)}
+:is(.dark,.scheme-congo) .pipe-focus-wrap{background:rgba(var(--ds-code-rgb),.05)}
+.pipe-focus-header{padding:.5em .9em;border-bottom:1px solid rgba(var(--ds-code-rgb),.15);display:flex;align-items:center;gap:.6em;flex-wrap:wrap}
 .pipe-focus-title{font-weight:800;font-size:1.05em}
 .pipe-focus-badge{font-size:.75em;font-weight:600;padding:.2em .6em;border-radius:999px;display:inline-block}
 .pipe-focus-body{padding:.6em}
@@ -94,10 +94,10 @@
 :is(.dark,.scheme-congo) .pipe-res-table th,:is(.dark,.scheme-congo) .pipe-res-table td{border-color:var(--color-neutral-700)}
 .pipe-res-table th{font-weight:700;font-size:.85em;opacity:.6;text-transform:uppercase;letter-spacing:.03em}
 .pipe-res-access{display:inline-block;padding:.15em .45em;border-radius:4px;font-size:.85em;font-weight:600;margin:.08em .1em}
-.pipe-res-read{background:rgba(59,130,246,.1);color:#3b82f6;border:1px solid rgba(59,130,246,.2)}
-.pipe-res-write{background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.2)}
-:is(.dark,.scheme-congo) .pipe-res-read{background:rgba(59,130,246,.15);color:#93c5fd}
-:is(.dark,.scheme-congo) .pipe-res-write{background:rgba(239,68,68,.15);color:#fca5a5}
+.pipe-res-read{background:rgba(var(--ds-info-rgb),.1);color:var(--ds-info);border:1px solid rgba(var(--ds-info-rgb),.2)}
+.pipe-res-write{background:rgba(var(--ds-danger-rgb),.1);color:var(--ds-danger);border:1px solid rgba(var(--ds-danger-rgb),.2)}
+:is(.dark,.scheme-congo) .pipe-res-read{background:rgba(var(--ds-info-rgb),.15);color:#93c5fd}
+:is(.dark,.scheme-congo) .pipe-res-write{background:rgba(var(--ds-danger-rgb),.15);color:#fca5a5}
 
 /* Stats */
 .pipe-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(95px,1fr));gap:.4em;margin:.6em 0;font-size:.8em}
@@ -105,8 +105,8 @@
 .pipe-stat-val{font-size:1.35em;font-weight:800;display:block;margin-bottom:.05em}
 .pipe-stat-lbl{font-size:.82em;opacity:.7;font-weight:500}
 
-.pipe-detail{font-size:.84em;line-height:1.65;margin:.5em 0;padding:.55em .8em;border-radius:.375rem;border-left:3px solid #8b5cf6;background:var(--color-neutral-100,#f5f5f5);min-height:1.4em}
-:is(.dark,.scheme-congo) .pipe-detail{background:var(--color-neutral-900);border-color:#8b5cf6}
+.pipe-detail{font-size:.84em;line-height:1.65;margin:.5em 0;padding:.55em .8em;border-radius:.375rem;border-left:3px solid var(--ds-code);background:var(--color-neutral-100,#f5f5f5);min-height:1.4em}
+:is(.dark,.scheme-congo) .pipe-detail{background:var(--color-neutral-900);border-color:var(--ds-code)}
 
 /* Minimap node hover */
 #pipe-minimap .mm-node{cursor:pointer}
@@ -117,9 +117,9 @@
 (function(){
 function isDark(){return document.documentElement.classList.contains("dark")||document.documentElement.classList.contains("scheme-congo")}
 const C={
-  alive:"#22c55e",dead:"#6b7280",output:"#f59e0b",async:"#8b5cf6",
-  edge:"#3b82f6",edgeOff:"#9ca3af",barrier:"#ef4444",
-  alias:["#3b82f6","#8b5cf6","#ec4899","#f59e0b","#14b8a6","#ef4444","#22c55e","#6366f1"],
+  alive:"var(--ds-success)",dead:"#6b7280",output:"var(--ds-warn)",async:"var(--ds-code)",
+  edge:"var(--ds-info)",edgeOff:"#9ca3af",barrier:"var(--ds-danger)",
+  alias:["var(--ds-info)","var(--ds-code)","var(--ds-pink)","var(--ds-warn)","var(--ds-teal)","var(--ds-danger)","var(--ds-success)","var(--ds-indigo)"],
   focusBg:function(){return isDark()?"#1e1b2e":"#faf8ff"},
   mmBg:function(){return isDark()?"#1a1a2e":"#fafafa"},
   text:function(){return isDark()?"#e5e7eb":"#1f2937"},
@@ -536,7 +536,7 @@ function renderFocus(opts){
     var cl1=svgText(F_PAD+F_NW/2,H-6,"reads from",C.textMuted(),"10","500");
     cl1.setAttribute("font-family","system-ui,sans-serif");svg.append(cl1);
   }
-  var cl2=svgText(centerX+F_NW/2,H-6,"selected","#8b5cf6","10","700");
+  var cl2=svgText(centerX+F_NW/2,H-6,"selected","var(--ds-code)","10","700");
   cl2.setAttribute("font-family","system-ui,sans-serif");svg.append(cl2);
   if(succIds.length>0){
     var cl3=svgText(F_PAD+2*F_CG+F_NW/2,H-6,"writes to",C.textMuted(),"10","500");
@@ -584,7 +584,7 @@ function renderFocus(opts){
     /* selection ring for center */
     if(isCenter){
       svg.append(el("rect",{x:x-4,y:y-4,width:F_NW+8,height:F_NH+8,rx:11,
-        fill:"none",stroke:"#8b5cf6","stroke-width":"2.5","stroke-dasharray":"5 3",opacity:"0.6"}));
+        fill:"none",stroke:"var(--ds-code)","stroke-width":"2.5","stroke-dasharray":"5 3",opacity:"0.6"}));
     }
     var strokeCol=no?"#d97706":nas?"#7c3aed":na?"#16a34a":"#4b5563";
     g.append(el("rect",{x:x,y:y,width:F_NW,height:F_NH,rx:8,
@@ -655,7 +655,7 @@ function renderStats(opts){
   s+="<div class='pipe-stat' style='border-color:"+C.edge+";color:"+C.edge+"'><span class='pipe-stat-val'>"+implicitEdges+"</span><span class='pipe-stat-lbl'>Implicit Deps</span></div>";
   if(opts.barriers)s+="<div class='pipe-stat' style='border-color:"+C.barrier+";color:"+C.barrier+"'><span class='pipe-stat-val'>"+cachedBarriers.length+"</span><span class='pipe-stat-lbl'>Barriers</span></div>";
   if(opts.async)s+="<div class='pipe-stat' style='border-color:"+C.async+";color:"+C.async+"'><span class='pipe-stat-val'>"+asyncPasses+"</span><span class='pipe-stat-lbl'>Async</span></div>";
-  if(opts.alias&&cachedAlias)s+="<div class='pipe-stat' style='border-color:#14b8a6;color:#14b8a6'><span class='pipe-stat-val'>"+cachedAlias.saved+"%</span><span class='pipe-stat-lbl'>VRAM Saved</span></div>";
+  if(opts.alias&&cachedAlias)s+="<div class='pipe-stat' style='border-color:var(--ds-teal);color:var(--ds-teal)'><span class='pipe-stat-val'>"+cachedAlias.saved+"%</span><span class='pipe-stat-lbl'>VRAM Saved</span></div>";
   statsDiv.innerHTML=s;
 
   var feats=[];

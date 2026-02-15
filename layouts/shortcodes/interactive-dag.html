@@ -25,8 +25,8 @@
 <style>
 .interactive-widget{margin:1.5em 0;border:2px solid var(--color-neutral-300,#d4d4d4);border-radius:.75rem;overflow:hidden;background:var(--color-neutral-50,#fafafa);box-shadow:0 2px 12px rgba(0,0,0,.06)}
 :is(.dark,.scheme-congo) .interactive-widget{background:var(--color-neutral-800,#262626);border-color:var(--color-neutral-600,#525252);box-shadow:0 2px 16px rgba(0,0,0,.25)}
-.widget-header{padding:.75em 1em .4em;border-bottom:1px solid var(--color-neutral-200,#e5e5e5);border-top:3px solid #3b82f6;background:linear-gradient(180deg,rgba(59,130,246,.04),transparent)}
-:is(.dark,.scheme-congo) .widget-header{border-color:var(--color-neutral-700);border-top-color:#3b82f6;background:linear-gradient(180deg,rgba(59,130,246,.08),transparent)}
+.widget-header{padding:.75em 1em .4em;border-bottom:1px solid var(--color-neutral-200,#e5e5e5);border-top:3px solid var(--ds-info);background:linear-gradient(180deg,rgba(var(--ds-info-rgb),.04),transparent)}
+:is(.dark,.scheme-congo) .widget-header{border-color:var(--color-neutral-700);border-top-color:var(--ds-info);background:linear-gradient(180deg,rgba(var(--ds-info-rgb),.08),transparent)}
 .widget-icon{font-size:1.2em;margin-right:.3em}
 .widget-title{font-weight:700;font-size:.95em}
 .widget-hint{margin:.4em 0 .15em;font-size:.82em;line-height:1.55;color:var(--color-neutral-600,#4b5563)}
@@ -37,12 +37,12 @@
 .widget-btn:hover{background:var(--color-neutral-200,#e5e5e5);border-color:var(--color-neutral-400)}
 :is(.dark,.scheme-congo) .widget-btn{background:var(--color-neutral-700,#404040);border-color:var(--color-neutral-600);color:var(--color-neutral-200)}
 :is(.dark,.scheme-congo) .widget-btn:hover{background:var(--color-neutral-600);border-color:var(--color-neutral-500)}
-.dag-explain{font-size:.84em;line-height:1.65;margin:.5em 0;padding:.5em .8em;border-radius:.375rem;border-left:3px solid #3b82f6;background:var(--color-neutral-100,#f5f5f5);min-height:1.5em}
-:is(.dark,.scheme-congo) .dag-explain{background:var(--color-neutral-900);border-color:#3b82f6}
+.dag-explain{font-size:.84em;line-height:1.65;margin:.5em 0;padding:.5em .8em;border-radius:.375rem;border-left:3px solid var(--ds-info);background:var(--color-neutral-100,#f5f5f5);min-height:1.5em}
+:is(.dark,.scheme-congo) .dag-explain{background:var(--color-neutral-900);border-color:var(--ds-info)}
 .dag-example-bar{display:flex;align-items:center;gap:.5em;margin-bottom:.75em;flex-wrap:wrap}
 .dag-example-label{font-size:.82em;font-weight:700;opacity:.6}
 .dag-ex-btn{font-size:.78em!important;padding:.35em .9em!important;border-radius:999px!important;font-weight:600!important}
-.dag-ex-active{background:#3b82f6!important;color:#fff!important;border-color:#3b82f6!important;box-shadow:0 0 0 2px rgba(59,130,246,.25)!important}
+.dag-ex-active{background:var(--ds-info)!important;color:#fff!important;border-color:var(--ds-info)!important;box-shadow:0 0 0 2px rgba(var(--ds-info-rgb),.25)!important}
 #dag-svg{width:100%;max-height:320px;display:block;margin:0 auto}
 #dag-svg .node rect{rx:8;ry:8;stroke-width:2;cursor:default;transition:fill .2s,stroke .2s,opacity .2s}
 #dag-svg .node text{font:600 12px ui-monospace,SFMono-Regular,monospace;fill:#fff;pointer-events:none;text-anchor:middle;dominant-baseline:central}
@@ -56,7 +56,7 @@
 <script>
 (function(){
 const NW=100,NH=34;
-const COL_ALIVE="#22c55e",COL_DEAD="#6b7280",COL_OUTPUT="#f59e0b",COL_EDGE="#3b82f6",COL_OFF="#9ca3af";
+const COL_ALIVE="var(--ds-success)",COL_DEAD="#6b7280",COL_OUTPUT="var(--ds-warn)",COL_EDGE="var(--ds-info)",COL_OFF="#9ca3af";
 
 const EXAMPLES=[
   {
@@ -231,7 +231,7 @@ function render(){
     r.setAttribute("x",p.x);r.setAttribute("y",p.y);
     r.setAttribute("width",NW);r.setAttribute("height",NH);
     r.setAttribute("fill",isOutput?COL_OUTPUT:isAlive?COL_ALIVE:COL_DEAD);
-    r.setAttribute("stroke",isOutput?"#d97706":isAlive?"#16a34a":"#4b5563");
+    r.setAttribute("stroke",isOutput?"var(--ds-warn-dark)":isAlive?"var(--ds-success-dark)":"#4b5563");
     r.setAttribute("opacity",isAlive?"1":"0.4");
     const t=document.createElementNS("http://www.w3.org/2000/svg","text");
     t.setAttribute("x",cx(p));t.setAttribute("y",cy(p));
@@ -250,7 +250,7 @@ function render(){
   if(disabled.length===0){
     info.innerHTML="All edges active — every pass reaches the output. <strong>Click an edge</strong> to break a dependency and see which passes get culled.";
   }else if(alive.size===0){
-    info.innerHTML="<strong style='color:#ef4444'>Output node disconnected!</strong> Nothing renders. The graph compiler would flag this as an error.";
+    info.innerHTML="<strong style='color:var(--ds-danger)'>Output node disconnected!</strong> Nothing renders. The graph compiler would flag this as an error.";
   }else if(culled.length>0){
     info.innerHTML="<strong>"+culled.map(p=>p.name).join(", ")+"</strong> culled — "+(culled.length===1?"its output is":"their outputs are")+" no longer consumed by any path to the final output. The compiler skips "+(culled.length===1?"this pass":"these passes")+" and frees their resources.";
   }else{

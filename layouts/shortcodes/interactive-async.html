@@ -25,18 +25,18 @@
 :is(.dark,.scheme-congo) #async-svg{border-color:var(--color-neutral-700)}
 .async-stats{font-family:ui-monospace,monospace;font-size:.82em;margin-top:.5em;display:flex;gap:1em;flex-wrap:wrap}
 .async-stat{padding:.3em .6em;border-radius:.25em;font-weight:600}
-.async-stat.good{background:#22c55e;color:#fff}
+.async-stat.good{background:var(--ds-success);color:#fff}
 .async-stat.neutral{background:var(--color-neutral-200,#e5e5e5);color:var(--color-neutral-700)}
 :is(.dark,.scheme-congo) .async-stat.neutral{background:var(--color-neutral-700);color:var(--color-neutral-300)}
 .async-legend{display:flex;gap:1em;flex-wrap:wrap;font-family:ui-monospace,monospace;font-size:.75em;margin-top:.5em}
 .async-legend-item{display:flex;align-items:center;gap:.3em}
 .async-legend-swatch{width:14px;height:14px;border-radius:3px;flex-shrink:0}
-.async-explain{font-size:.82em;line-height:1.6;margin-top:.5em;padding:.5em .7em;border-radius:.375rem;border-left:3px solid #3b82f6;background:var(--color-neutral-100,#f5f5f5)}
-:is(.dark,.scheme-congo) .async-explain{background:var(--color-neutral-900);border-color:#3b82f6}
+.async-explain{font-size:.82em;line-height:1.6;margin-top:.5em;padding:.5em .7em;border-radius:.375rem;border-left:3px solid var(--ds-info);background:var(--color-neutral-100,#f5f5f5)}
+:is(.dark,.scheme-congo) .async-explain{background:var(--color-neutral-900);border-color:var(--ds-info)}
 .async-example-bar{display:flex;gap:.5em;flex-wrap:wrap;margin-bottom:.5em}
 .async-ex-btn{padding:.35em .9em;border-radius:999px;border:1.5px solid var(--color-neutral-300,#d1d5db);background:var(--color-neutral-100,#f5f5f5);font-size:.82em;font-weight:600;cursor:pointer;color:var(--color-neutral-700,#374151);transition:all .15s}
-.async-ex-btn:hover{border-color:#3b82f6;color:#3b82f6}
-.async-ex-active{background:#3b82f6!important;color:#fff!important;border-color:#3b82f6!important;box-shadow:0 0 0 2px rgba(59,130,246,.25)!important}
+.async-ex-btn:hover{border-color:var(--ds-info);color:var(--ds-info)}
+.async-ex-active{background:var(--ds-info)!important;color:#fff!important;border-color:var(--ds-info)!important;box-shadow:0 0 0 2px rgba(var(--ds-info-rgb),.25)!important}
 :is(.dark,.scheme-congo) .async-ex-btn{border-color:var(--color-neutral-600);color:var(--color-neutral-300);background:var(--color-neutral-700)}
 </style>
 
@@ -178,7 +178,7 @@ function render(){
 
   // Arrow marker
   const defs=el("defs",{});
-  defs.innerHTML='<marker id="async-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#f59e0b"/></marker>';
+  defs.innerHTML='<marker id="async-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--ds-warn)"/></marker>';
   svg.prepend(defs);
 
   // Draw passes
@@ -190,11 +190,11 @@ function render(){
     const x=left+sc.startTime[p.id]*scale+2;
     const w=p.cost*scale-4;
 
-    const fill=isComp?"#8b5cf6":p.canCompute?"#3b82f6":"#6b7280";
+    const fill=isComp?"var(--ds-code)":p.canCompute?"var(--ds-info)":"#6b7280";
     const group=el("g",{style:"cursor:"+(p.canCompute?"pointer":"default")});
 
     group.append(el("rect",{x:x,y:y,width:w,height:boxH,rx:6,fill:fill,opacity:.9,
-      stroke:p.canCompute?(isDark()?"#93c5fd":"#60a5fa"):"transparent","stroke-width":p.canCompute?2:0}));
+      stroke:p.canCompute?(isDark()?"var(--ds-info-light)":"#60a5fa"):"transparent","stroke-width":p.canCompute?2:0}));
     group.append(txt(x+w/2,y+boxH/2+1,p.name,"#fff","bold 11px ui-monospace,monospace","middle"));
     // Cost label
     group.append(txt(x+w/2,y+boxH+12,p.cost+"ms",isDark()?"#666":"#aaa","9px ui-monospace,monospace","middle"));
@@ -202,7 +202,7 @@ function render(){
     if(p.canCompute){
       // Move icon
       const iconY=y-2;
-      group.append(txt(x+w-10,iconY,isComp?"↑":"↓",isComp?"#c084fc":"#93c5fd","bold 13px sans-serif","middle"));
+      group.append(txt(x+w-10,iconY,isComp?"↑":"↓",isComp?"var(--ds-code-light)":"var(--ds-info-light)","bold 13px sans-serif","middle"));
       group.addEventListener("click",()=>{
         p.queue=isComp?"gfx":"compute";
         render();
@@ -222,10 +222,10 @@ function render(){
         const toY=p.queue==="compute"?compY+(laneH/2):gfxY+(laneH/2);
         const x1=left+sc.endTime[d]*scale;
         const x2=left+sc.startTime[p.id]*scale;
-        svg.append(el("line",{x1:x1,y1:fromY,x2:x2,y2:toY,stroke:"#f59e0b","stroke-width":2.5,"stroke-dasharray":"5,3","marker-end":"url(#async-arrow)"}));
+        svg.append(el("line",{x1:x1,y1:fromY,x2:x2,y2:toY,stroke:"var(--ds-warn)","stroke-width":2.5,"stroke-dasharray":"5,3","marker-end":"url(#async-arrow)"}));
         // Fence label
         const mx=(x1+x2)/2,my=(fromY+toY)/2;
-        svg.append(txt(mx,my-8,"fence","#f59e0b","bold 9px ui-monospace,monospace","middle"));
+        svg.append(txt(mx,my-8,"fence","var(--ds-warn)","bold 9px ui-monospace,monospace","middle"));
         fenceCount.push({from:dep.name,to:p.name});
       }
     });
@@ -246,7 +246,7 @@ function render(){
   const explEl=document.getElementById("async-explain");
   if(asyncPasses===0){
     explEl.innerHTML="<strong>All passes on Graphics queue.</strong> The GPU processes them one after another. "+
-      "Click a <span style='color:#3b82f6;font-weight:600'>blue pass</span> to offload it to the Compute queue -- "+
+      "Click a <span style='color:var(--ds-info);font-weight:600'>blue pass</span> to offload it to the Compute queue -- "+
       "good candidates are compute-only work like SSAO, Light Culling, Volumetrics, or Bloom.";
   }else{
     var names=passes.filter(function(p){return p.queue==="compute"}).map(function(p){return p.name}).join(", ");
@@ -271,9 +271,9 @@ function txt(x,y,text,fill,font,anchor){
 // Legend
 document.getElementById("async-legend").innerHTML=[
   {c:"#6b7280",l:"Graphics-only (can't move)"},
-  {c:"#3b82f6",l:"Compute-eligible (click to move)"},
-  {c:"#8b5cf6",l:"Running on Compute queue"},
-  {c:"#f59e0b",l:"Fence (cross-queue sync)"}
+  {c:"var(--ds-info)",l:"Compute-eligible (click to move)"},
+  {c:"var(--ds-code)",l:"Running on Compute queue"},
+  {c:"var(--ds-warn)",l:"Fence (cross-queue sync)"}
 ].map(function(i){return '<span class="async-legend-item"><span class="async-legend-swatch" style="background:'+i.c+'"></span>'+i.l+'</span>'}).join("");
 
 window.asyncReset=function(){loadExample(curExIdx);};

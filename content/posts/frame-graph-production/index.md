@@ -11,7 +11,7 @@ showTableOfContents: false
 
 {{< article-nav >}}
 
-<div style="margin:0 0 1.5em;padding:.7em 1em;border-radius:8px;background:rgba(99,102,241,.04);border:1px solid rgba(99,102,241,.12);font-size:.88em;line-height:1.6;opacity:.85;">
+<div style="margin:0 0 1.5em;padding:.7em 1em;border-radius:8px;background:rgba(var(--ds-indigo-rgb),.04);border:1px solid rgba(var(--ds-indigo-rgb),.12);font-size:.88em;line-height:1.6;opacity:.85;">
 📖 <strong>Part III of III.</strong>&ensp; <a href="../frame-graph-theory/">Theory</a> → <a href="../frame-graph-build-it/">Build It</a> → <em>Production Engines</em>
 </div>
 
@@ -29,15 +29,15 @@ Each `AddPass` takes a parameter struct + execute lambda. The struct *is* the se
 
 <div class="diagram-macro">
   <div class="dm-code">
-    <span style="color:#8b5cf6">BEGIN_SHADER_PARAMETER_STRUCT(...)</span><br>
+    <span style="color:var(--ds-code)">BEGIN_SHADER_PARAMETER_STRUCT(...)</span><br>
     &nbsp;&nbsp;SHADER_PARAMETER_RDG_TEXTURE(Input)<br>
     &nbsp;&nbsp;RENDER_TARGET_BINDING_SLOT(Output)<br>
-    <span style="color:#8b5cf6">END_SHADER_PARAMETER_STRUCT()</span>
+    <span style="color:var(--ds-code)">END_SHADER_PARAMETER_STRUCT()</span>
   </div>
   <div class="dm-arrow">→</div>
   <div class="dm-result">
-    <span style="color:#22c55e">read edge</span> ←<br>
-    <span style="color:#ef4444">write edge</span> ← &nbsp;→ DAG
+    <span style="color:var(--ds-success)">read edge</span> ←<br>
+    <span style="color:var(--ds-danger)">write edge</span> ← &nbsp;→ DAG
   </div>
 </div>
 <div style="font-size:.78em;opacity:.6;margin-top:-.3em">Macro generates metadata → RDG extracts dependency edges. No separate setup lambda needed.</div>
@@ -45,8 +45,8 @@ Each `AddPass` takes a parameter struct + execute lambda. The struct *is* the se
 **Pass flags** control queue and behavior — `ERDGPassFlags::Raster`, `::Compute`, `::AsyncCompute`, `::NeverCull`, `::Copy`. **Resources** are either transient (`CreateTexture` — graph-owned, eligible for aliasing) or imported (`RegisterExternalTexture` — externally owned, barriers tracked but no aliasing).
 
 <div style="display:flex;gap:1em;flex-wrap:wrap;margin:1em 0">
-  <div style="flex:1;min-width:260px;border:1px solid rgba(59,130,246,.25);border-radius:10px;overflow:hidden">
-    <div style="background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(59,130,246,.05));padding:.6em 1em;font-weight:700;font-size:.9em;color:#3b82f6;border-bottom:1px solid rgba(59,130,246,.15)">Pass Flags</div>
+  <div style="flex:1;min-width:260px;border:1px solid rgba(var(--ds-info-rgb),.25);border-radius:10px;overflow:hidden">
+    <div style="background:linear-gradient(135deg,rgba(var(--ds-info-rgb),.12),rgba(var(--ds-info-rgb),.05));padding:.6em 1em;font-weight:700;font-size:.9em;color:var(--ds-info);border-bottom:1px solid rgba(var(--ds-info-rgb),.15)">Pass Flags</div>
     <div style="padding:.6em 1em;font-size:.85em;line-height:1.8">
       <code>ERDGPassFlags::Raster</code> — Graphics queue, render targets<br>
       <code>ERDGPassFlags::Compute</code> — Graphics queue, compute dispatch<br>
@@ -56,8 +56,8 @@ Each `AddPass` takes a parameter struct + execute lambda. The struct *is* the se
       <code>ERDGPassFlags::SkipRenderPass</code> — Raster pass that manages its own render pass
     </div>
   </div>
-  <div style="flex:1;min-width:260px;border:1px solid rgba(139,92,246,.25);border-radius:10px;overflow:hidden">
-    <div style="background:linear-gradient(135deg,rgba(139,92,246,.12),rgba(139,92,246,.05));padding:.6em 1em;font-weight:700;font-size:.9em;color:#8b5cf6;border-bottom:1px solid rgba(139,92,246,.15)">Resource Types</div>
+  <div style="flex:1;min-width:260px;border:1px solid rgba(var(--ds-code-rgb),.25);border-radius:10px;overflow:hidden">
+    <div style="background:linear-gradient(135deg,rgba(var(--ds-code-rgb),.12),rgba(var(--ds-code-rgb),.05));padding:.6em 1em;font-weight:700;font-size:.9em;color:var(--ds-code);border-bottom:1px solid rgba(var(--ds-code-rgb),.15)">Resource Types</div>
     <div style="padding:.6em 1em;font-size:.85em;line-height:1.8">
       <code>FRDGTexture</code> / <code>FRDGTextureRef</code> — Render targets, SRVs, UAVs<br>
       <code>FRDGBuffer</code> / <code>FRDGBufferRef</code> — Structured, vertex/index, indirect args<br>
@@ -90,8 +90,8 @@ Frostbite's GDC 2017 talk described a similar lambda-based declaration — setup
 This is where production engines diverge most from our MVP. The compile phase runs entirely on the CPU, between declaration and execution. Our MVP does five things here: topo-sort, cull, scan lifetimes, alias, and compute barriers. Production engines do the same five — plus pass merging, async compute scheduling, split barrier placement, and barrier batching.
 
 <div class="diagram-phases">
-  <div class="dph-col" style="border-color:#8b5cf6;flex:1;">
-    <div class="dph-title" style="color:#8b5cf6">MVP compile</div>
+  <div class="dph-col" style="border-color:var(--ds-code);flex:1;">
+    <div class="dph-title" style="color:var(--ds-code)">MVP compile</div>
     <div class="dph-body" style="font-size:.84em;">
       ├ topo-sort<br>
       ├ cull dead passes<br>
@@ -100,9 +100,9 @@ This is where production engines diverge most from our MVP. The compile phase ru
       └ compute barriers
     </div>
   </div>
-  <div style="display:flex;align-items:center;font-size:1.4em;color:#8b5cf6;font-weight:700">→</div>
-  <div class="dph-col" style="border-color:#6366f1;flex:1.4;">
-    <div class="dph-title" style="color:#6366f1">Production compile</div>
+  <div style="display:flex;align-items:center;font-size:1.4em;color:var(--ds-code);font-weight:700">→</div>
+  <div class="dph-col" style="border-color:var(--ds-indigo);flex:1.4;">
+    <div class="dph-title" style="color:var(--ds-indigo)">Production compile</div>
     <div class="dph-body" style="font-size:.84em;">
       ├ topo-sort<br>
       ├ cull dead passes<br>
@@ -132,7 +132,7 @@ Both engines use the same core algorithm from [Part II](/posts/frame-graph-build
   <tr><td><strong>Placed resources</strong></td><td><code>FRDGTransientResourceAllocator</code> binds into <code>ID3D12Heap</code> offsets</td><td>Heap sub-allocation</td></tr>
   <tr><td><strong>Size bucketing</strong></td><td>Power-of-two in transient allocator</td><td>Custom bin sizes</td></tr>
   <tr><td><strong>Cross-frame pooling</strong></td><td>Persistent pool, peak-N-frames sizing</td><td>Pooling described in talk</td></tr>
-  <tr><td><strong>Imported aliasing</strong></td><td><span style="color:#ef4444">✗</span> transient only</td><td>Described as supported</td></tr>
+  <tr><td><strong>Imported aliasing</strong></td><td><span style="color:var(--ds-danger)">✗</span> transient only</td><td>Described as supported</td></tr>
 </table>
 </div>
 
@@ -190,7 +190,7 @@ This boundary is shrinking every release as Epic migrates more passes to RDG, bu
 
 ### 🔍 Debug & visualization
 
-<div style="display:flex;align-items:flex-start;gap:.8em;border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:1em 1.2em;margin:1em 0;background:linear-gradient(135deg,rgba(34,197,94,.05),transparent)">
+<div style="display:flex;align-items:flex-start;gap:.8em;border:1px solid rgba(var(--ds-success-rgb),.2);border-radius:10px;padding:1em 1.2em;margin:1em 0;background:linear-gradient(135deg,rgba(var(--ds-success-rgb),.05),transparent)">
   <span style="font-size:1.4em;line-height:1">🔍</span>
   <div style="font-size:.9em;line-height:1.55"><strong>RDG Insights.</strong> Enable via the Unreal editor to visualize the full pass graph, resource lifetimes, and barrier placement. Use <code>r.RDG.Debug</code> CVars for validation: <code>r.RDG.Debug.FlushGPU</code> serializes execution for debugging, <code>r.RDG.Debug.ExtendResourceLifetimes</code> disables aliasing to isolate corruption bugs. The frame is data — export it, diff it, analyze offline.</div>
 </div>
@@ -255,7 +255,7 @@ The point isn't that every project needs a render graph. The point is that if yo
 
 ---
 
-<div style="margin:2em 0 0;padding:1em 1.2em;border-radius:10px;border:1px solid rgba(99,102,241,.2);background:rgba(99,102,241,.03);display:flex;justify-content:flex-start;">
+<div style="margin:2em 0 0;padding:1em 1.2em;border-radius:10px;border:1px solid rgba(var(--ds-indigo-rgb),.2);background:rgba(var(--ds-indigo-rgb),.03);display:flex;justify-content:flex-start;">
   <a href="../frame-graph-build-it/" style="text-decoration:none;font-weight:700;font-size:.95em;">
     ← Previous: Part II — Build It
   </a>

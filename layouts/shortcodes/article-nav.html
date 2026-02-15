@@ -59,7 +59,7 @@
 .anav-progress-bar {
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+  background: linear-gradient(90deg, var(--ds-accent), var(--ds-highlight));
   transition: width .15s linear;
   border-radius: 0 2px 2px 0;
 }
@@ -88,7 +88,7 @@
   font-size: 1.1em;
 }
 .anav-bc-part {
-  color: #3b82f6;
+  color: var(--ds-accent);
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
@@ -104,7 +104,7 @@
 .anav-bc-pct {
   margin-left: auto;
   font-weight: 700;
-  color: #3b82f6;
+  color: var(--ds-accent);
   white-space: nowrap;
   min-width: 3em;
   text-align: right;
@@ -170,11 +170,11 @@
   text-overflow: ellipsis;
 }
 .anav-rail-part:hover { text-decoration: underline; }
-.anav-rail-part[data-part="0"] { color: #3b82f6; }
-.anav-rail-part[data-part="1"] { color: #8b5cf6; }
-.anav-rail-part[data-part="2"] { color: #22c55e; }
-.anav-rail-part[data-part="3"] { color: #f59e0b; }
-.anav-rail-part[data-part="4"] { color: #ef4444; }
+.anav-rail-part[data-part="0"] { color: var(--ds-part-0); }
+.anav-rail-part[data-part="1"] { color: var(--ds-part-1); }
+.anav-rail-part[data-part="2"] { color: var(--ds-part-2); }
+.anav-rail-part[data-part="3"] { color: var(--ds-part-3); }
+.anav-rail-part[data-part="4"] { color: var(--ds-part-4); }
 
 .anav-rail-link {
   display: block;
@@ -189,19 +189,19 @@
   margin-left: .3em;
 }
 .anav-rail-link:hover {
-  background: rgba(59,130,246,.08);
+  background: rgba(var(--ds-accent-rgb),.08);
 }
 .anav-rail-link.active {
-  color: #3b82f6;
+  color: var(--ds-accent);
   font-weight: 700;
-  background: rgba(59,130,246,.1);
-  border-left-color: #3b82f6;
+  background: rgba(var(--ds-accent-rgb),.1);
+  border-left-color: var(--ds-accent);
 }
 :is(.dark,.scheme-congo) .anav-rail-link:hover {
-  background: rgba(59,130,246,.12);
+  background: rgba(var(--ds-accent-rgb),.12);
 }
 :is(.dark,.scheme-congo) .anav-rail-link.active {
-  background: rgba(59,130,246,.15);
+  background: rgba(var(--ds-accent-rgb),.15);
 }
 
 .anav-rail-pct-bottom {
@@ -209,7 +209,7 @@
   font-family: ui-monospace, SFMono-Regular, monospace;
   font-size: .78em;
   font-weight: 700;
-  color: #3b82f6;
+  color: var(--ds-accent);
   border-top: 1px solid var(--color-neutral-200, #e5e5e5);
   margin-top: .3em;
 }
@@ -228,11 +228,11 @@
   height: 52px;
   border-radius: 50%;
   border: none;
-  background: #3b82f6;
+  background: var(--ds-accent);
   color: #fff;
   font-size: 1.5em;
   cursor: pointer;
-  box-shadow: 0 3px 12px rgba(59,130,246,.4);
+  box-shadow: 0 3px 12px rgba(var(--ds-accent-rgb),.4);
   transition: transform .15s;
   -webkit-tap-highlight-color: transparent;
 }
@@ -380,7 +380,7 @@
     // Build structure: parts (h1/#) and sections (h2/##, h3/###)
     var parts = [];
     var allSections = []; // flat list for scroll spy
-    var partColors = ['#3b82f6','#8b5cf6','#22c55e','#f59e0b','#ef4444'];
+    var partColors = ['var(--ds-part-0)','var(--ds-part-1)','var(--ds-part-2)','var(--ds-part-3)','var(--ds-part-4)'];
     var currentPart = -1;
 
     headings.forEach(function(h) {
@@ -549,7 +549,7 @@
           var partShort = parts[currentPartIdx].name.split('—')[0].trim();
           bcPart.textContent = partShort;
           bcPart.setAttribute('data-part', currentPartIdx);
-          bcPart.style.color = partColors[currentPartIdx] || '#3b82f6';
+          bcPart.style.color = partColors[currentPartIdx] || 'var(--ds-accent)';
         }
         bcSection.textContent = currentSection.isPart ? '—' : currentSection.name;
 

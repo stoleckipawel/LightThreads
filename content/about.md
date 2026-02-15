@@ -18,8 +18,8 @@ showWordCount: false
   to   { opacity: 1; }
 }
 @keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255,159,28,.45); }
-  50%      { box-shadow: 0 0 0 6px rgba(255,159,28,0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(var(--ds-accent-rgb),.5), 0 0 8px rgba(var(--ds-accent-rgb),.15); }
+  50%      { box-shadow: 0 0 0 8px rgba(var(--ds-accent-rgb),0), 0 0 16px rgba(var(--ds-highlight-rgb),.08); }
 }
 @keyframes shimmer {
   0%   { background-position: -200% center; }
@@ -37,13 +37,19 @@ showWordCount: false
 .about-hero::before {
   content: '';
   position: absolute; inset: -1.5px; border-radius: 15px;
-  background: linear-gradient(90deg, transparent 25%, rgba(255,159,28,.25) 50%, transparent 75%);
+  background: linear-gradient(90deg, transparent 15%, rgba(var(--ds-accent-rgb),.35) 45%, rgba(var(--ds-highlight-rgb),.25) 55%, transparent 85%);
   background-size: 200% 100%;
-  animation: shimmer 4s ease-in-out infinite;
+  animation: shimmer 5s ease-in-out infinite;
   pointer-events: none;
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask-composite: exclude; -webkit-mask-composite: xor;
   padding: 1.5px;
+}
+.about-hero::after {
+  content: '';
+  position: absolute; inset: 0; border-radius: 14px;
+  background: radial-gradient(ellipse 70% 80% at 85% 20%, rgba(var(--ds-accent-rgb),.07) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 /* Topic cards */
@@ -59,8 +65,9 @@ showWordCount: false
 .about-card:nth-child(6) { animation-delay: .45s; }
 .about-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 6px 20px rgba(255,159,28,.1);
-  border-color: rgba(255,159,28,.35);
+  box-shadow: 0 6px 24px rgba(var(--ds-accent-rgb),.12), 0 0 40px rgba(var(--ds-accent-rgb),.04);
+  border-color: rgba(var(--ds-accent-rgb),.4);
+  background: rgba(var(--ds-accent-rgb),.06);
 }
 .about-card .card-icon {
   display: inline-block;
@@ -73,6 +80,12 @@ showWordCount: false
 /* Author card */
 .about-author {
   animation: fadeSlideUp .6s .3s ease-out both;
+}
+.about-author::before {
+  content: '';
+  position: absolute; left: 0; top: 12%; bottom: 12%;
+  width: 3px; border-radius: 2px;
+  background: linear-gradient(180deg, var(--ds-accent) 0%, var(--ds-highlight) 50%, var(--ds-warm) 100%);
 }
 
 /* Timeline entries */
@@ -89,9 +102,9 @@ showWordCount: false
 }
 .tl-dot-active::after {
   content: '';
-  position: absolute; inset: 0;
+  position: absolute; inset: -3px;
   border-radius: 50%;
-  animation: pulseGlow 2.2s ease-in-out infinite;
+  animation: pulseGlow 2.4s ease-in-out infinite;
 }
 
 /* Skill tags staggered pop */
@@ -113,8 +126,21 @@ showWordCount: false
 .badge-current::after {
   content: '';
   position: absolute; inset: -2px; border-radius: 7px;
-  background:rgba(255,209,102,.15);
-  animation: pulseGlow 2.5s 1s ease-in-out infinite;
+  background: rgba(var(--ds-highlight-rgb),.12);
+  animation: pulseGlow 2.8s 1s ease-in-out infinite;
+}
+
+/* Section headings — warm underline accent */
+.article-content h2 {
+  position: relative;
+  padding-bottom: .35em;
+}
+.article-content h2::after {
+  content: '';
+  position: absolute; left: 0; bottom: 0;
+  width: 2.5em; height: 2.5px; border-radius: 2px;
+  background: linear-gradient(90deg, var(--ds-accent), var(--ds-highlight));
+  opacity: .7;
 }
 
 /* Disclaimer fade */
@@ -133,8 +159,8 @@ showWordCount: false
 </style>
 
 <!-- Hero intro -->
-<div class="about-hero" style="position:relative;margin:0 0 2em;padding:1.4em 1.6em;border-radius:14px;border:1.5px solid rgba(255,159,28,.18);background:linear-gradient(135deg,rgba(255,159,28,.05),rgba(255,209,102,.03));line-height:1.7;">
-  <div style="font-size:1.25em;font-weight:800;margin-bottom:.3em;">Deep Spark</div>
+<div class="about-hero" style="position:relative;margin:0 0 2em;padding:1.6em 1.8em;border-radius:14px;border:1.5px solid rgba(var(--ds-accent-rgb),.2);background:linear-gradient(135deg,rgba(var(--ds-accent-rgb),.06) 0%,rgba(var(--ds-highlight-rgb),.03) 40%,rgba(var(--ds-warm-rgb),.04) 100%);line-height:1.7;overflow:hidden;">
+  <div style="font-size:1.3em;font-weight:800;margin-bottom:.35em;background:linear-gradient(90deg,var(--ds-soft),var(--ds-accent),var(--ds-highlight));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;display:inline-block;">Deep Spark</div>
   <div style="font-size:1em;">
     A compact notebook for <strong>engine design</strong>, <strong>GPU/CPU/memory profiling</strong>, <strong>PBR</strong>, <strong>ray tracing</strong>, and <strong>practical performance work</strong>.
   </div>
@@ -145,32 +171,32 @@ showWordCount: false
 ## What I Write About
 
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.8em;margin:1.2em 0 2em;">
-  <div class="about-card" style="padding:.85em 1em;border-radius:10px;border:1px solid rgba(255,159,28,.15);background:rgba(255,159,28,.03);cursor:default;">
+  <div class="about-card" style="padding:.85em 1em;border-radius:10px;border:1px solid rgba(var(--ds-accent-rgb),.15);background:rgba(var(--ds-accent-rgb),.03);cursor:default;">
 <div class="card-icon" style="font-size:1.15em;margin-bottom:.25em;">🛠️</div>
     <div style="font-weight:700;font-size:.92em;margin-bottom:.2em;">Rendering Engine Design</div>
     <div style="font-size:.84em;opacity:.7;line-height:1.5;">APIs, modular architecture, maintainability, and pragmatic release strategies.</div>
   </div>
-  <div class="about-card" style="padding:.85em 1em;border-radius:10px;border:1px solid rgba(255,159,28,.15);background:rgba(255,159,28,.03);cursor:default;">
+  <div class="about-card" style="padding:.85em 1em;border-radius:10px;border:1px solid rgba(var(--ds-accent-rgb),.15);background:rgba(var(--ds-accent-rgb),.03);cursor:default;">
     <div class="card-icon" style="font-size:1.15em;margin-bottom:.25em;">⚙️</div>
     <div style="font-weight:700;font-size:.92em;margin-bottom:.2em;">Engine Systems & Trade-offs</div>
     <div style="font-size:.84em;opacity:.7;line-height:1.5;">High-performance game systems and real-time application architecture.</div>
   </div>
-  <div class="about-card" style="padding:.85em 1em;border-radius:10px;border:1px solid rgba(255,159,28,.15);background:rgba(255,159,28,.03);cursor:default;">
+  <div class="about-card" style="padding:.85em 1em;border-radius:10px;border:1px solid rgba(var(--ds-accent-rgb),.15);background:rgba(var(--ds-accent-rgb),.03);cursor:default;">
     <div class="card-icon" style="font-size:1.15em;margin-bottom:.25em;">⚡</div>
     <div style="font-weight:700;font-size:.92em;margin-bottom:.2em;">GPU-Aware Performance</div>
     <div style="font-size:.84em;opacity:.7;line-height:1.5;">Memory layout, bandwidth vs compute trade-offs, batching, and caching.</div>
   </div>
-  <div class="about-card" style="padding:.85em 1em;border-radius:10px;border:1px solid rgba(255,159,28,.15);background:rgba(255,159,28,.03);cursor:default;">
+  <div class="about-card" style="padding:.85em 1em;border-radius:10px;border:1px solid rgba(var(--ds-accent-rgb),.15);background:rgba(var(--ds-accent-rgb),.03);cursor:default;">
     <div class="card-icon" style="font-size:1.15em;margin-bottom:.25em;">🎨</div>
     <div style="font-weight:700;font-size:.92em;margin-bottom:.2em;">PBR & Light Transport</div>
     <div style="font-size:.84em;opacity:.7;line-height:1.5;">Useful patterns for physically based rendering, sampling, and denoising.</div>
   </div>
-  <div class="about-card" style="padding:.85em 1em;border-radius:10px;border:1px solid rgba(255,159,28,.15);background:rgba(255,159,28,.03);cursor:default;">
+  <div class="about-card" style="padding:.85em 1em;border-radius:10px;border:1px solid rgba(var(--ds-accent-rgb),.15);background:rgba(var(--ds-accent-rgb),.03);cursor:default;">
     <div class="card-icon" style="font-size:1.15em;margin-bottom:.25em;">✨</div>
     <div style="font-weight:700;font-size:.92em;margin-bottom:.2em;">Ray Tracing Pipelines</div>
     <div style="font-size:.84em;opacity:.7;line-height:1.5;">Getting quality where it matters without breaking the frame budget.</div>
   </div>
-  <div class="about-card" style="padding:.85em 1em;border-radius:10px;border:1px solid rgba(255,159,28,.15);background:rgba(255,159,28,.03);cursor:default;">
+  <div class="about-card" style="padding:.85em 1em;border-radius:10px;border:1px solid rgba(var(--ds-accent-rgb),.15);background:rgba(var(--ds-accent-rgb),.03);cursor:default;">
     <div class="card-icon" style="font-size:1.15em;margin-bottom:.25em;">🔍</div>
     <div style="font-weight:700;font-size:.92em;margin-bottom:.2em;">Profiling & Shader Tuning</div>
     <div style="font-size:.84em;opacity:.7;line-height:1.5;">Small tooling that makes performance work repeatable and measurable.</div>
@@ -181,8 +207,8 @@ showWordCount: false
 
 ## About the Author
 
-<div class="about-author" style="margin:1.2em 0 1.5em;padding:1.3em 1.5em;border-radius:12px;border:1.5px solid rgba(255,159,28,.18);background:linear-gradient(135deg,rgba(255,159,28,.04),transparent);line-height:1.7;">
-  <div style="font-size:1.1em;font-weight:800;margin-bottom:.4em;">Pawel Stolecki</div>
+<div class="about-author" style="position:relative;margin:1.2em 0 1.5em;padding:1.3em 1.5em 1.3em 1.8em;border-radius:12px;border:1.5px solid rgba(var(--ds-accent-rgb),.18);background:linear-gradient(135deg,rgba(var(--ds-accent-rgb),.05) 0%,rgba(var(--ds-highlight-rgb),.02) 60%,transparent 100%);line-height:1.7;overflow:hidden;">
+  <div style="font-size:1.12em;font-weight:800;margin-bottom:.4em;color:var(--ds-highlight);">Pawel Stolecki</div>
   <div style="font-size:.95em;">
     3D graphics software engineer focused on real-time rendering. I enjoy the intersection where visual-quality research meets hands-on optimization — pushing shading closer to ground truth while keeping systems efficient and shippable.
   </div>
@@ -190,34 +216,34 @@ showWordCount: false
 
 ### Experience
 
-<div style="position:relative;margin:1.4em 0 2em;padding-left:2.2em;border-left:3px solid rgba(255,159,28,.2);">
+<div style="position:relative;margin:1.4em 0 2em;padding-left:2.2em;border-left:3px solid transparent;border-image:linear-gradient(180deg,rgba(var(--ds-accent-rgb),.35),rgba(var(--ds-highlight-rgb),.15),rgba(var(--ds-warm-rgb),.1)) 1;">
 
   <!-- CD PROJEKT RED -->
   <div class="tl-entry" style="position:relative;margin-bottom:2.2em;">
-    <div class="tl-dot-active" style="position:absolute;left:-2.9em;top:.15em;width:1.4em;height:1.4em;border-radius:50%;background:#FF9F1C;display:flex;align-items:center;justify-content:center;">
+    <div class="tl-dot-active" style="position:absolute;left:-2.9em;top:.15em;width:1.4em;height:1.4em;border-radius:50%;background:linear-gradient(135deg,var(--ds-soft),var(--ds-accent));display:flex;align-items:center;justify-content:center;">
       <div style="width:.5em;height:.5em;border-radius:50%;background:#fff;"></div>
     </div>
     <div style="display:flex;align-items:baseline;gap:.6em;flex-wrap:wrap;">
       <span style="font-weight:800;font-size:1.08em;">CD PROJEKT RED</span>
-      <span class="badge-current" style="font-size:.78em;padding:.18em .6em;border-radius:5px;background:rgba(255,209,102,.12);color:#FFD166;font-weight:600;">Current</span>
+      <span class="badge-current" style="font-size:.78em;padding:.18em .6em;border-radius:5px;background:rgba(var(--ds-highlight-rgb),.12);color:var(--ds-highlight);font-weight:600;">Current</span>
     </div>
     <div style="font-size:.82em;opacity:.55;margin:.15em 0 .5em;">Rendering Engineer</div>
     <div style="font-size:.92em;line-height:1.7;">
       Driving lighting technology improvements. The work is hands-on and investigative — prototype a change, measure it on hardware, trace what the GPU, CPU, memory is actually doing, and ship what moves the needle.
     </div>
     <div class="tl-tags" style="display:flex;flex-wrap:wrap;gap:.4em;margin-top:.6em;">
-      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(255,159,28,.18);background:rgba(255,159,28,.06);color:rgba(255,159,28,.85);font-weight:600;">Direct Lighting</span>
-      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(255,159,28,.18);background:rgba(255,159,28,.06);color:rgba(255,159,28,.85);font-weight:600;">Indirect Lighting</span>
-      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(255,209,102,.18);background:rgba(255,209,102,.06);color:rgba(255,209,102,.85);font-weight:600;">GPU/CPU Profiling</span>
-      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(255,209,102,.18);background:rgba(255,209,102,.06);color:rgba(255,209,102,.85);font-weight:600;">Memory Profiling</span>
-      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(232,114,12,.18);background:rgba(232,114,12,.06);color:rgba(232,114,12,.85);font-weight:600;">Platform Optimization</span>
-      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(232,114,12,.18);background:rgba(232,114,12,.06);color:rgba(232,114,12,.85);font-weight:600;">Cross-Platform</span>
+      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(var(--ds-accent-rgb),.18);background:rgba(var(--ds-accent-rgb),.06);color:rgba(var(--ds-accent-rgb),.85);font-weight:600;">Direct Lighting</span>
+      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(var(--ds-accent-rgb),.18);background:rgba(var(--ds-accent-rgb),.06);color:rgba(var(--ds-accent-rgb),.85);font-weight:600;">Indirect Lighting</span>
+      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(var(--ds-highlight-rgb),.18);background:rgba(var(--ds-highlight-rgb),.06);color:rgba(var(--ds-highlight-rgb),.85);font-weight:600;">GPU/CPU Profiling</span>
+      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(var(--ds-highlight-rgb),.18);background:rgba(var(--ds-highlight-rgb),.06);color:rgba(var(--ds-highlight-rgb),.85);font-weight:600;">Memory Profiling</span>
+      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(var(--ds-warm-rgb),.18);background:rgba(var(--ds-warm-rgb),.06);color:rgba(var(--ds-warm-rgb),.85);font-weight:600;">Platform Optimization</span>
+      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(var(--ds-warm-rgb),.18);background:rgba(var(--ds-warm-rgb),.06);color:rgba(var(--ds-warm-rgb),.85);font-weight:600;">Cross-Platform</span>
     </div>
   </div>
 
   <!-- Techland -->
   <div class="tl-entry" style="position:relative;">
-    <div style="position:absolute;left:-2.9em;top:.15em;width:1.4em;height:1.4em;border-radius:50%;background:rgba(255,159,28,.3);display:flex;align-items:center;justify-content:center;">
+    <div style="position:absolute;left:-2.9em;top:.15em;width:1.4em;height:1.4em;border-radius:50%;background:rgba(var(--ds-accent-rgb),.3);display:flex;align-items:center;justify-content:center;">
       <div style="width:.5em;height:.5em;border-radius:50%;background:#fff;"></div>
     </div>
     <div style="font-weight:800;font-size:1.08em;">Techland</div>
@@ -226,18 +252,18 @@ showWordCount: false
       Worked across the full rasterization pipeline — GBuffer generation, lighting, and post-processing — while scaling the renderer to ship on everything from handhelds to high-end PC. Began as a Technical Artist, which built a lasting focus on artist-facing tools, visual debugging, and workflows that keep content creators unblocked.
     </div>
     <div class="tl-tags" style="display:flex;flex-wrap:wrap;gap:.4em;margin-top:.6em;">
-      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(255,159,28,.18);background:rgba(255,159,28,.06);color:rgba(255,159,28,.85);font-weight:600;">GBuffer Fill</span>
-      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(255,159,28,.18);background:rgba(255,159,28,.06);color:rgba(255,159,28,.85);font-weight:600;">Lighting</span>
-      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(255,209,102,.18);background:rgba(255,209,102,.06);color:rgba(255,209,102,.85);font-weight:600;">Post-Processing</span>
-      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(255,209,102,.18);background:rgba(255,209,102,.06);color:rgba(255,209,102,.85);font-weight:600;">Multi-Platform Scalability</span>
-      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(232,114,12,.18);background:rgba(232,114,12,.06);color:rgba(232,114,12,.85);font-weight:600;">Artist Tooling</span>
-      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(232,114,12,.18);background:rgba(232,114,12,.06);color:rgba(232,114,12,.85);font-weight:600;">Visual Debugging</span>
+      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(var(--ds-accent-rgb),.18);background:rgba(var(--ds-accent-rgb),.06);color:rgba(var(--ds-accent-rgb),.85);font-weight:600;">GBuffer Fill</span>
+      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(var(--ds-accent-rgb),.18);background:rgba(var(--ds-accent-rgb),.06);color:rgba(var(--ds-accent-rgb),.85);font-weight:600;">Lighting</span>
+      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(var(--ds-highlight-rgb),.18);background:rgba(var(--ds-highlight-rgb),.06);color:rgba(var(--ds-highlight-rgb),.85);font-weight:600;">Post-Processing</span>
+      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(var(--ds-highlight-rgb),.18);background:rgba(var(--ds-highlight-rgb),.06);color:rgba(var(--ds-highlight-rgb),.85);font-weight:600;">Multi-Platform Scalability</span>
+      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(var(--ds-warm-rgb),.18);background:rgba(var(--ds-warm-rgb),.06);color:rgba(var(--ds-warm-rgb),.85);font-weight:600;">Artist Tooling</span>
+      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(var(--ds-warm-rgb),.18);background:rgba(var(--ds-warm-rgb),.06);color:rgba(var(--ds-warm-rgb),.85);font-weight:600;">Visual Debugging</span>
     </div>
   </div>
 
   <!-- The Farm 51 -->
   <div class="tl-entry" style="position:relative;">
-    <div style="position:absolute;left:-2.9em;top:.15em;width:1.4em;height:1.4em;border-radius:50%;background:rgba(255,159,28,.2);display:flex;align-items:center;justify-content:center;">
+    <div style="position:absolute;left:-2.9em;top:.15em;width:1.4em;height:1.4em;border-radius:50%;background:rgba(var(--ds-accent-rgb),.2);display:flex;align-items:center;justify-content:center;">
       <div style="width:.5em;height:.5em;border-radius:50%;background:#fff;"></div>
     </div>
     <div style="font-weight:800;font-size:1.08em;">The Farm 51</div>
@@ -246,12 +272,12 @@ showWordCount: false
       Built procedural shader systems for environmental effects — forest fire, stormy ocean, wind-driven foliage — alongside a landscape production pipeline and general-purpose shader library. Owned R&D for simulation systems and drove performance optimization across the board.
     </div>
     <div class="tl-tags" style="display:flex;flex-wrap:wrap;gap:.4em;margin-top:.6em;">
-      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(255,159,28,.18);background:rgba(255,159,28,.06);color:rgba(255,159,28,.85);font-weight:600;">Procedural Shaders</span>
-      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(255,159,28,.18);background:rgba(255,159,28,.06);color:rgba(255,159,28,.85);font-weight:600;">Wind Simulation</span>
-      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(255,209,102,.18);background:rgba(255,209,102,.06);color:rgba(255,209,102,.85);font-weight:600;">Landscape Pipeline</span>
-      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(255,209,102,.18);background:rgba(255,209,102,.06);color:rgba(255,209,102,.85);font-weight:600;">Ocean Rendering</span>
-      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(232,114,12,.18);background:rgba(232,114,12,.06);color:rgba(232,114,12,.85);font-weight:600;">R&amp;D</span>
-      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(232,114,12,.18);background:rgba(232,114,12,.06);color:rgba(232,114,12,.85);font-weight:600;">Optimization</span>
+      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(var(--ds-accent-rgb),.18);background:rgba(var(--ds-accent-rgb),.06);color:rgba(var(--ds-accent-rgb),.85);font-weight:600;">Procedural Shaders</span>
+      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(var(--ds-accent-rgb),.18);background:rgba(var(--ds-accent-rgb),.06);color:rgba(var(--ds-accent-rgb),.85);font-weight:600;">Wind Simulation</span>
+      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(var(--ds-highlight-rgb),.18);background:rgba(var(--ds-highlight-rgb),.06);color:rgba(var(--ds-highlight-rgb),.85);font-weight:600;">Landscape Pipeline</span>
+      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(var(--ds-highlight-rgb),.18);background:rgba(var(--ds-highlight-rgb),.06);color:rgba(var(--ds-highlight-rgb),.85);font-weight:600;">Ocean Rendering</span>
+      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(var(--ds-warm-rgb),.18);background:rgba(var(--ds-warm-rgb),.06);color:rgba(var(--ds-warm-rgb),.85);font-weight:600;">R&amp;D</span>
+      <span style="font-size:.75em;padding:.2em .55em;border-radius:5px;border:1px solid rgba(var(--ds-warm-rgb),.18);background:rgba(var(--ds-warm-rgb),.06);color:rgba(var(--ds-warm-rgb),.85);font-weight:600;">Optimization</span>
     </div>
   </div>
 
@@ -259,7 +285,7 @@ showWordCount: false
 
 ---
 
-<div class="about-disclaimer" style="margin-top:1em;padding:.9em 1.2em;border-radius:8px;border:1px solid rgba(156,163,175,.15);background:rgba(156,163,175,.03);font-size:.82em;line-height:1.6;opacity:.65;">
+<div class="about-disclaimer" style="margin-top:1em;padding:.9em 1.2em;border-radius:8px;border:1px solid rgba(var(--ds-accent-rgb),.08);background:rgba(var(--ds-accent-rgb),.02);font-size:.82em;line-height:1.6;opacity:.6;">
 <strong>Disclaimer:</strong> All content on this site reflects my personal opinions and experiences only. Nothing here represents the views, positions, or endorsements of any company I currently work for or have previously worked for.
 </div>
 

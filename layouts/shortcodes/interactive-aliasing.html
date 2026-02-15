@@ -27,20 +27,20 @@
 </div>
 
 <style>
-.alias-controls{display:flex;align-items:center;gap:1.2em;margin-bottom:.75em;flex-wrap:wrap;padding:.65em .9em;border-radius:8px;background:linear-gradient(135deg,rgba(34,197,94,.06),rgba(59,130,246,.06));border:1.5px dashed rgba(34,197,94,.3)}
-:is(.dark,.scheme-congo) .alias-controls{background:linear-gradient(135deg,rgba(34,197,94,.1),rgba(59,130,246,.08));border-color:rgba(34,197,94,.35)}
+.alias-controls{display:flex;align-items:center;gap:1.2em;margin-bottom:.75em;flex-wrap:wrap;padding:.65em .9em;border-radius:8px;background:linear-gradient(135deg,rgba(var(--ds-success-rgb),.06),rgba(var(--ds-info-rgb),.06));border:1.5px dashed rgba(var(--ds-success-rgb),.3)}
+:is(.dark,.scheme-congo) .alias-controls{background:linear-gradient(135deg,rgba(var(--ds-success-rgb),.1),rgba(var(--ds-info-rgb),.08));border-color:rgba(var(--ds-success-rgb),.35)}
 .alias-toggle{display:flex;align-items:center;gap:.6em;cursor:pointer;user-select:none}
 .alias-toggle input{display:none}
 .alias-toggle-slider{width:48px;height:26px;background:var(--color-neutral-300,#d4d4d4);border-radius:13px;position:relative;transition:background .25s;box-shadow:inset 0 1px 3px rgba(0,0,0,.12)}
 .alias-toggle-slider::after{content:"";position:absolute;width:22px;height:22px;border-radius:50%;background:#fff;top:2px;left:2px;transition:transform .25s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
-.alias-toggle input:checked+.alias-toggle-slider{background:#22c55e;box-shadow:0 0 0 3px rgba(34,197,94,.25),inset 0 1px 3px rgba(0,0,0,.1)}
+.alias-toggle input:checked+.alias-toggle-slider{background:var(--ds-success);box-shadow:0 0 0 3px rgba(var(--ds-success-rgb),.25),inset 0 1px 3px rgba(0,0,0,.1)}
 .alias-toggle input:checked+.alias-toggle-slider::after{transform:translateX(22px)}
 .alias-toggle-label{font-weight:700;font-size:.9em;font-family:ui-monospace,monospace}
-.alias-toggle-cta{font-size:.75em;color:#22c55e;font-weight:600;animation:aliasPulse 2s ease-in-out infinite;white-space:nowrap}
+.alias-toggle-cta{font-size:.75em;color:var(--ds-success);font-weight:600;animation:aliasPulse 2s ease-in-out infinite;white-space:nowrap}
 .alias-toggle input:checked ~ .alias-toggle-cta{display:none}
 @keyframes aliasPulse{0%,100%{opacity:1}50%{opacity:.4}}
 .alias-vram{font-family:ui-monospace,monospace;font-size:.85em;font-weight:700;padding:.3em .6em;border-radius:.25em;transition:background .3s,color .3s}
-.alias-vram.saving{background:#22c55e;color:#fff}
+.alias-vram.saving{background:var(--ds-success);color:#fff}
 .alias-vram.no-save{background:var(--color-neutral-200,#e5e5e5);color:var(--color-neutral-700)}
 :is(.dark,.scheme-congo) .alias-vram.no-save{background:var(--color-neutral-700);color:var(--color-neutral-300)}
 #alias-canvas{width:100%;border-radius:.375rem;border:1px solid var(--color-neutral-200,#e5e5e5)}
@@ -51,7 +51,7 @@
 .alias-example-bar{display:flex;align-items:center;gap:.5em;margin-bottom:.75em;flex-wrap:wrap}
 .alias-example-label{font-size:.82em;font-weight:700;color:var(--color-neutral-500)}
 .alias-ex-btn{font-size:.78em!important;padding:.35em .9em!important;border-radius:999px!important;font-weight:600!important}
-.alias-ex-active{background:#3b82f6!important;color:#fff!important;border-color:#3b82f6!important;box-shadow:0 0 0 2px rgba(59,130,246,.25)!important}
+.alias-ex-active{background:var(--ds-info)!important;color:#fff!important;border-color:var(--ds-info)!important;box-shadow:0 0 0 2px rgba(var(--ds-info-rgb),.25)!important}
 </style>
 
 <script>
@@ -60,36 +60,36 @@ var EXAMPLES=[
   {
     passes:["Depth","GBuffer","SSAO","Lighting","Bloom","Tonemap"],
     resources:[
-      {name:"depth",   sizeMB:16, first:0,last:1, color:"#8b5cf6"},
-      {name:"gbufAlbedo", sizeMB:8,first:1,last:3, color:"#3b82f6"},
+      {name:"depth",   sizeMB:16, first:0,last:1, color:"var(--ds-code)"},
+      {name:"gbufAlbedo", sizeMB:8,first:1,last:3, color:"var(--ds-info)"},
       {name:"gbufNorm",sizeMB:8,first:1,last:3, color:"#06b6d4"},
-      {name:"ssao",    sizeMB:4,first:2,last:3, color:"#f59e0b"},
-      {name:"hdr",     sizeMB:16,first:3,last:5, color:"#ef4444"},
-      {name:"bloom",   sizeMB:8,first:4,last:5, color:"#ec4899"},
-      {name:"backbuf", sizeMB:8,first:5,last:5, color:"#22c55e"}
+      {name:"ssao",    sizeMB:4,first:2,last:3, color:"var(--ds-warn)"},
+      {name:"hdr",     sizeMB:16,first:3,last:5, color:"var(--ds-danger)"},
+      {name:"bloom",   sizeMB:8,first:4,last:5, color:"var(--ds-pink)"},
+      {name:"backbuf", sizeMB:8,first:5,last:5, color:"var(--ds-success)"}
     ]
   },
   {
     passes:["Scene","BloomD1","BloomD2","BloomUp","DOF","Composite","TAA","Tonemap"],
     resources:[
-      {name:"sceneHDR",sizeMB:32,first:0,last:5,color:"#ef4444"},
-      {name:"bloomD1", sizeMB:8, first:1,last:2,color:"#ec4899"},
+      {name:"sceneHDR",sizeMB:32,first:0,last:5,color:"var(--ds-danger)"},
+      {name:"bloomD1", sizeMB:8, first:1,last:2,color:"var(--ds-pink)"},
       {name:"bloomD2", sizeMB:4, first:2,last:3,color:"#f97316"},
-      {name:"bloomRes",sizeMB:8, first:3,last:5,color:"#f59e0b"},
-      {name:"dofBuf",  sizeMB:16,first:4,last:5,color:"#8b5cf6"},
-      {name:"compRes", sizeMB:32,first:5,last:6,color:"#3b82f6"},
+      {name:"bloomRes",sizeMB:8, first:3,last:5,color:"var(--ds-warn)"},
+      {name:"dofBuf",  sizeMB:16,first:4,last:5,color:"var(--ds-code)"},
+      {name:"compRes", sizeMB:32,first:5,last:6,color:"var(--ds-info)"},
       {name:"taaHist", sizeMB:32,first:6,last:7,color:"#06b6d4"},
       {name:"depth",   sizeMB:16,first:0,last:4,color:"#6b7280"},
-      {name:"backbuf", sizeMB:8, first:7,last:7,color:"#22c55e"}
+      {name:"backbuf", sizeMB:8, first:7,last:7,color:"var(--ds-success)"}
     ]
   },
   {
     passes:["Depth","Forward","Tonemap","Present"],
     resources:[
-      {name:"depth",  sizeMB:16,first:0,last:1,color:"#8b5cf6"},
-      {name:"color",  sizeMB:32,first:1,last:2,color:"#3b82f6"},
-      {name:"backbuf",sizeMB:8, first:2,last:3,color:"#22c55e"},
-      {name:"skyTmp", sizeMB:16,first:1,last:1,color:"#f59e0b"}
+      {name:"depth",  sizeMB:16,first:0,last:1,color:"var(--ds-code)"},
+      {name:"color",  sizeMB:32,first:1,last:2,color:"var(--ds-info)"},
+      {name:"backbuf",sizeMB:8, first:2,last:3,color:"var(--ds-success)"},
+      {name:"skyTmp", sizeMB:16,first:1,last:1,color:"var(--ds-warn)"}
     ]
   }
 ];
