@@ -1,21 +1,18 @@
 /* ── Full-width layout overrides ─────────────────────────────── */
-/* Widen the outer page container (theme default: max-w-7xl = 1280px) */
+/* Widen the outer page container (theme default: max-w-7xl = 1280px).
+   Using a large but finite value so margin:auto still centres the page. */
 body {
-  max-width: 100% !important;
-  padding-left: 2rem !important;
-  padding-right: 2rem !important;
+  max-width: 1800px !important;
 }
-@media (min-width: 640px)  { body { padding-left: 3rem !important; padding-right: 3rem !important; } }
-@media (min-width: 1024px) { body { padding-left: 5rem !important; padding-right: 5rem !important; } }
 
 /* Widen article header (theme default: max-w-prose ≈ 65ch) */
 #single_header {
-  max-width: 100% !important;
+  max-width: none !important;
 }
 
 /* Widen article body text (theme default: max-w-prose ≈ 65ch) */
 .article-content {
-  max-width: 100% !important;
+  max-width: none !important;
 }
 
 /* ── Collapsible code blocks (include-code shortcode) ────────── */
