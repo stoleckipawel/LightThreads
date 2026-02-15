@@ -253,15 +253,18 @@ Each frame starts on the CPU. You register passes, describe the resources they n
   <div class="db-body">
     <div class="diagram-pipeline">
       <div class="dp-stage">
-        <div class="dp-title">ADD PASSES</div>
+        <div class="dp-title">REGISTER PASSES</div>
+        <div style="font-size:.78em;opacity:.55;margin:-.1em 0 .4em;line-height:1.4">Tell the graph <em>what work</em> this frame needs — each pass gets a setup callback to declare resources and an execute callback for later GPU recording.</div>
         <ul><li><code>addPass(setup, execute)</code></li></ul>
       </div>
       <div class="dp-stage">
-        <div class="dp-title">DECLARE RESOURCES</div>
+        <div class="dp-title">DESCRIBE RESOURCES</div>
+        <div style="font-size:.78em;opacity:.55;margin:-.1em 0 .4em;line-height:1.4">Declare every texture and buffer a pass will touch — size, format, usage — without allocating GPU memory. Everything stays virtual.</div>
         <ul><li><code>create({1920,1080, RGBA8})</code></li></ul>
       </div>
       <div class="dp-stage">
-        <div class="dp-title">WIRE DEPENDENCIES</div>
+        <div class="dp-title">CONNECT READS &amp; WRITES</div>
+        <div style="font-size:.78em;opacity:.55;margin:-.1em 0 .4em;line-height:1.4">Wire up the edges: <em>this pass reads that texture, that pass writes this buffer.</em> These connections drive execution order, barriers, and memory aliasing.</div>
         <ul><li><code>read(h)</code> / <code>write(h)</code></li></ul>
       </div>
     </div>
