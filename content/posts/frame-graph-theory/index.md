@@ -36,27 +36,27 @@ showTableOfContents: false
       <svg viewBox="0 0 24 16" width="20" height="13" fill="none"><path d="M4 8h12m-4-4l5 4-5 4" stroke="var(--ds-success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".5"/></svg>
     </div>
     <div style="padding:.65em 1em;font-size:.88em;font-weight:700;border-bottom:1px solid rgba(var(--ds-indigo-rgb),.06);">
-      Sorted by dependencies.
+      Auto-sorted — no ordering bugs.
     </div>
     <!-- Row 2 -->
     <div style="padding:.65em 1em;font-size:.88em;opacity:.5;text-decoration:line-through;border-bottom:1px solid rgba(var(--ds-indigo-rgb),.06);border-right:1px solid rgba(var(--ds-indigo-rgb),.06);text-align:right;">
-      Every GPU sync point placed by hand.
+      Every resource transition placed by hand.
     </div>
     <div style="padding:.65em .3em;border-bottom:1px solid rgba(var(--ds-indigo-rgb),.06);border-right:1px solid rgba(var(--ds-indigo-rgb),.06);display:flex;align-items:center;justify-content:center;">
       <svg viewBox="0 0 24 16" width="20" height="13" fill="none"><path d="M4 8h12m-4-4l5 4-5 4" stroke="var(--ds-success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".5"/></svg>
     </div>
     <div style="padding:.65em 1em;font-size:.88em;font-weight:700;border-bottom:1px solid rgba(var(--ds-indigo-rgb),.06);">
-      Barriers inserted for you.
+      Auto-inserted — no stalls or corruption.
     </div>
     <!-- Row 3 -->
     <div style="padding:.65em 1em;font-size:.88em;opacity:.5;text-decoration:line-through;border-right:1px solid rgba(var(--ds-indigo-rgb),.06);text-align:right;">
-      Each pass allocates its own memory — 900 MB gone.
+      Every resource gets its own allocation.
     </div>
     <div style="padding:.65em .3em;border-right:1px solid rgba(var(--ds-indigo-rgb),.06);display:flex;align-items:center;justify-content:center;">
       <svg viewBox="0 0 24 16" width="20" height="13" fill="none"><path d="M4 8h12m-4-4l5 4-5 4" stroke="var(--ds-success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".5"/></svg>
     </div>
     <div style="padding:.65em 1em;font-size:.88em;font-weight:700;color:var(--ds-success);">
-      Resources shared safely — ~450 MB back.
+      Resources aliased — ~50 % less VRAM.
     </div>
   </div>
   <!-- Footer -->
@@ -245,7 +245,7 @@ A frame graph models an entire frame as a **directed acyclic graph (DAG)**. Each
 </div>
 </div>
 
-You never execute this graph directly. Because the system sees **every** pass and **every** resource before a single GPU instruction is recorded, it can reorder work, alias memory, and insert synchronization barriers automatically — exactly the things that break when done by hand at scale.
+The GPU never sees this graph. It exists only on the CPU, long enough for the system to inspect **every** pass and **every** resource before a single GPU command is recorded. That global view is what makes automatic scheduling, memory aliasing, and barrier insertion possible — exactly the things that break when done by hand at scale.
 
 Every frame follows a three-phase lifecycle:
 
@@ -277,28 +277,33 @@ The separation is deliberate: declaration is cheap, compilation is where the opt
 
 Each frame starts on the CPU. You register passes, describe the resources they need, and declare who reads or writes what. No GPU work happens yet — you're building a description of the frame.
 
-<div class="diagram-box">
-  <div class="db-title">📋 DECLARE — building the graph</div>
-  <div class="db-body">
-    <div class="diagram-pipeline">
-      <div class="dp-stage">
-        <div class="dp-title">REGISTER PASSES</div>
-        <div style="font-size:.78em;opacity:.55;margin:-.1em 0 .4em;line-height:1.4">Tell the graph <em>what work</em> this frame needs — each pass gets a setup callback to declare resources and an execute callback for later GPU recording.</div>
-        <ul><li><code>addPass(setup, execute)</code></li></ul>
-      </div>
-      <div class="dp-stage">
-        <div class="dp-title">DESCRIBE RESOURCES</div>
-        <div style="font-size:.78em;opacity:.55;margin:-.1em 0 .4em;line-height:1.4">Declare every texture and buffer a pass will touch — size, format, usage — without allocating GPU memory. Everything stays virtual.</div>
-        <ul><li><code>create({1920,1080, RGBA8})</code></li></ul>
-      </div>
-      <div class="dp-stage">
-        <div class="dp-title">CONNECT READS &amp; WRITES</div>
-        <div style="font-size:.78em;opacity:.55;margin:-.1em 0 .4em;line-height:1.4">Wire up the edges: <em>this pass reads that texture, that pass writes this buffer.</em> These connections drive execution order, barriers, and memory aliasing.</div>
-        <ul><li><code>read(h)</code> / <code>write(h)</code></li></ul>
-      </div>
+<div style="margin:1em 0 1.2em;display:grid;gap:.6em;">
+
+  <div class="fg-hoverable" style="display:grid;grid-template-columns:2.2em 1fr;gap:0 .8em;padding:.8em 1em;border-radius:10px;border:1.5px solid rgba(var(--ds-info-rgb),.2);background:rgba(var(--ds-info-rgb),.03);">
+    <div style="grid-row:1/3;font-size:1.1em;color:var(--ds-info);opacity:.5;text-align:center;padding-top:.25em;">●</div>
+    <div><span style="font-weight:800;color:var(--ds-info);font-size:.92em;letter-spacing:.03em;">REGISTER PASSES</span></div>
+    <div style="font-size:.86em;line-height:1.6;opacity:.75;">Tell the graph <em>what work</em> this frame needs — each pass gets a setup callback to declare resources and an execute callback for later GPU recording.
+      <div style="margin-top:.35em;"><code style="font-size:.92em;">addPass(setup, execute)</code></div>
     </div>
-    <div style="text-align:center;font-size:.82em;opacity:.6;margin-top:.3em">CPU only — the GPU is idle during this phase</div>
   </div>
+
+  <div class="fg-hoverable" style="display:grid;grid-template-columns:2.2em 1fr;gap:0 .8em;padding:.8em 1em;border-radius:10px;border:1.5px solid rgba(var(--ds-info-rgb),.2);background:rgba(var(--ds-info-rgb),.03);">
+    <div style="grid-row:1/3;font-size:1.1em;color:var(--ds-info);opacity:.5;text-align:center;padding-top:.25em;">●</div>
+    <div><span style="font-weight:800;color:var(--ds-info);font-size:.92em;letter-spacing:.03em;">DESCRIBE RESOURCES</span></div>
+    <div style="font-size:.86em;line-height:1.6;opacity:.75;">Declare every texture and buffer a pass will touch — size, format, usage — without allocating GPU memory. Everything stays virtual.
+      <div style="margin-top:.35em;"><code style="font-size:.92em;">create({1920,1080, RGBA8})</code></div>
+    </div>
+  </div>
+
+  <div class="fg-hoverable" style="display:grid;grid-template-columns:2.2em 1fr;gap:0 .8em;padding:.8em 1em;border-radius:10px;border:1.5px solid rgba(var(--ds-info-rgb),.2);background:rgba(var(--ds-info-rgb),.03);">
+    <div style="grid-row:1/3;font-size:1.1em;color:var(--ds-info);opacity:.5;text-align:center;padding-top:.25em;">●</div>
+    <div><span style="font-weight:800;color:var(--ds-info);font-size:.92em;letter-spacing:.03em;">CONNECT READS &amp; WRITES</span></div>
+    <div style="font-size:.86em;line-height:1.6;opacity:.75;">Wire up the edges: <em>this pass reads that texture, that pass writes this buffer.</em> These connections drive execution order, barriers, and memory aliasing.
+      <div style="margin-top:.35em;"><code style="font-size:.92em;">read(h)</code> / <code style="font-size:.92em;">write(h)</code></div>
+    </div>
+  </div>
+
+  <div style="text-align:center;font-size:.8em;opacity:.5;margin-top:-.1em;">CPU only — the GPU is idle during this phase</div>
 </div>
 
 <div class="fg-reveal" style="margin:1.2em 0;padding:1.1em 1.3em;border-radius:10px;border:1.5px dashed rgba(var(--ds-indigo-rgb),.3);background:rgba(var(--ds-indigo-rgb),.04);display:flex;align-items:center;gap:1.2em;flex-wrap:wrap;">
