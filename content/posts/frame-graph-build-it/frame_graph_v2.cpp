@@ -5,7 +5,7 @@
 #include <queue>
 #include <unordered_set>
 
-// â”€â”€ FrameGraph implementation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// == FrameGraph implementation =================================
 
 ResourceHandle FrameGraph::createResource(const ResourceDesc& desc) {
     entries.push_back({ desc, {{}}, ResourceState::Undefined, false });
@@ -54,7 +54,7 @@ void FrameGraph::execute() {
     entries.clear();
 }
 
-// â”€â”€ Build dependency edges â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// == Build dependency edges ====================================
 
 void FrameGraph::buildEdges() {
     for (uint32_t i = 0; i < passes.size(); i++) {
@@ -69,7 +69,7 @@ void FrameGraph::buildEdges() {
     }
 }
 
-// â”€â”€ Kahn's topological sort â€” O(V + E) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// == Kahn's topological sort â€” O(V + E) ========================
 
 std::vector<uint32_t> FrameGraph::topoSort() {
     std::queue<uint32_t> q;
@@ -97,7 +97,7 @@ std::vector<uint32_t> FrameGraph::topoSort() {
     return order;
 }
 
-// â”€â”€ Cull dead passes (backward walk from output) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// == Cull dead passes (backward walk from output) ==============
 
 void FrameGraph::cull(const std::vector<uint32_t>& sorted) {
     // Mark the last pass (present) as alive, then walk backward.
@@ -116,7 +116,7 @@ void FrameGraph::cull(const std::vector<uint32_t>& sorted) {
     }
 }
 
-// â”€â”€ Insert barriers where resource state changes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// == Insert barriers where resource state changes ==============
 
 void FrameGraph::insertBarriers(uint32_t passIdx) {
     auto stateForUsage = [](bool isWrite, Format fmt) {

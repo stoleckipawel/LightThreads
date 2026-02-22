@@ -1,7 +1,6 @@
 // Frame Graph v2 — SSAO Connected (output IS read → pass stays alive)
 // Compile: g++ -std=c++17 -o example_v2_ssao_alive example_v2_ssao_alive.cpp frame_graph_v2.cpp
 #include "frame_graph_v2.h"
-#include "frame_graph_v2.cpp"  // single-TU build (Godbolt)
 #include <cstdio>
 
 int main() {

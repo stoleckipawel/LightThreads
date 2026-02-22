@@ -13,7 +13,7 @@
 [[main]]
 name = "Posts"
 pre = "pencil"
-pageRef = "posts"
+pageRef = "/"
 title = "Read articles on rendering architecture and GPU performance"
 weight = 10
 

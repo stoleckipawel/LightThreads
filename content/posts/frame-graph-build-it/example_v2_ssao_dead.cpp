@@ -1,7 +1,6 @@
 // Frame Graph v2 — SSAO Disconnected (output NOT read → pass gets culled)
 // Compile: g++ -std=c++17 -o example_v2_ssao_dead example_v2_ssao_dead.cpp frame_graph_v2.cpp
 #include "frame_graph_v2.h"
-#include "frame_graph_v2.cpp"  // single-TU build (Godbolt)
 #include <cstdio>
 
 int main() {

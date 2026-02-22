@@ -6,7 +6,7 @@
 #include <queue>
 #include <unordered_set>
 
-// â”€â”€ FrameGraph implementation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// == FrameGraph implementation =================================
 
 ResourceHandle FrameGraph::createResource(const ResourceDesc& desc) {
     entries.push_back({ desc, {{}}, ResourceState::Undefined });
@@ -34,7 +34,7 @@ void FrameGraph::write(uint32_t passIdx, ResourceHandle h) {
     passes[passIdx].writes.push_back(h);
 }
 
-// â”€â”€ v3: compile â€” builds the execution plan + allocates memory â”€â”€
+// == v3: compile â€” builds the execution plan + allocates memory ==
 
 FrameGraph::CompiledPlan FrameGraph::compile() {
     printf("\n[1] Building dependency edges...\n");
@@ -53,7 +53,7 @@ FrameGraph::CompiledPlan FrameGraph::compile() {
     return { std::move(sorted), std::move(mapping) };
 }
 
-// â”€â”€ v3: execute â€” runs the compiled plan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// == v3: execute â€” runs the compiled plan =====================
 
 void FrameGraph::execute(const CompiledPlan& plan) {
     printf("[6] Executing (with automatic barriers):\n");
@@ -72,7 +72,7 @@ void FrameGraph::execute(const CompiledPlan& plan) {
 // convenience: compile + execute in one call
 void FrameGraph::execute() { execute(compile()); }
 
-// â”€â”€ Build dependency edges â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// == Build dependency edges ====================================
 
 void FrameGraph::buildEdges() {
     for (uint32_t i = 0; i < passes.size(); i++) {
@@ -86,7 +86,7 @@ void FrameGraph::buildEdges() {
     }
 }
 
-// â”€â”€ Kahn's topological sort â€” O(V + E) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// == Kahn's topological sort â€” O(V + E) ========================
 
 std::vector<uint32_t> FrameGraph::topoSort() {
     std::queue<uint32_t> q;
@@ -113,7 +113,7 @@ std::vector<uint32_t> FrameGraph::topoSort() {
     return order;
 }
 
-// â”€â”€ Cull dead passes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// == Cull dead passes ==========================================
 
 void FrameGraph::cull(const std::vector<uint32_t>& sorted) {
     if (sorted.empty()) return;
@@ -131,7 +131,7 @@ void FrameGraph::cull(const std::vector<uint32_t>& sorted) {
     }
 }
 
-// â”€â”€ Insert barriers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// == Insert barriers ===========================================
 
 void FrameGraph::insertBarriers(uint32_t passIdx) {
     auto stateForUsage = [](bool isWrite, Format fmt) {
@@ -163,7 +163,7 @@ void FrameGraph::insertBarriers(uint32_t passIdx) {
     }
 }
 
-// â”€â”€ Scan lifetimes (NEW v3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// == Scan lifetimes (NEW v3) ===================================
 
 std::vector<Lifetime> FrameGraph::scanLifetimes(const std::vector<uint32_t>& sorted) {
     std::vector<Lifetime> life(entries.size());
@@ -198,7 +198,7 @@ std::vector<Lifetime> FrameGraph::scanLifetimes(const std::vector<uint32_t>& sor
     return life;
 }
 
-// â”€â”€ Greedy free-list aliasing (NEW v3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// == Greedy free-list aliasing (NEW v3) ========================
 
 std::vector<uint32_t> FrameGraph::aliasResources(const std::vector<Lifetime>& lifetimes) {
     std::vector<PhysicalBlock> freeList;
@@ -245,8 +245,7 @@ std::vector<uint32_t> FrameGraph::aliasResources(const std::vector<Lifetime>& li
                    needed / (1024.0f * 1024.0f),
                    lifetimes[resIdx].firstUse,
                    lifetimes[resIdx].lastUse);
-            freeList.push_back({ needed, entries[resIdx].desc.format,
-                                 lifetimes[resIdx].lastUse });
+            freeList.push_back({ needed, lifetimes[resIdx].lastUse });
         }
     }
 

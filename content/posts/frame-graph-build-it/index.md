@@ -165,7 +165,6 @@ classDiagram
 
     class PhysicalBlock {
         +uint32_t sizeBytes
-        +Format format
         +uint32_t availAfter
     }
 
@@ -300,7 +299,7 @@ With those choices made, here's where we're headed — the final API in under 30
 
 Three types are all we need to start: a `ResourceDesc` (width, height, format — no GPU handle yet), a `ResourceHandle` that's just an index, and a `RenderPass` with setup + execute lambdas. The `FrameGraph` class owns arrays of both and runs passes in declaration order. No dependency tracking, no barriers — just the foundation that v2 and v3 build on.
 
-{{< code-diff title="v1 — Resource types" >}}
+{{< code-diff title="v1 — Resource types (frame_graph_v1.h)" >}}
 @@ New types — resource description + handle @@
 +enum class Format { RGBA8, RGBA16F, R8, D32F };
 +
@@ -318,7 +317,7 @@ Three types are all we need to start: a `ResourceDesc` (width, height, format �
 
 A pass is two lambdas — setup (runs now, wires the DAG) and execute (stored for later, records GPU commands). v1 doesn't use setup yet, but the slot is there for v2:
 
-{{< code-diff title="v1 — RenderPass + FrameGraph class" >}}
+{{< code-diff title="v1 — RenderPass + FrameGraph class (frame_graph_v1.h)" >}}
 @@ RenderPass @@
 +struct RenderPass {
 +    std::string                        name;
@@ -334,16 +333,16 @@ A pass is two lambdas — setup (runs now, wires the DAG) and execute (stored fo
 +
 +    template <typename SetupFn, typename ExecFn>
 +    void addPass(const std::string& name, SetupFn&& setup, ExecFn&& exec) {
-+        passes_.push_back({ name, std::forward<SetupFn>(setup),
-+                                   std::forward<ExecFn>(exec) });
-+        passes_.back().setup();  // run setup immediately
++        passes.push_back({ name, std::forward<SetupFn>(setup),
++                                  std::forward<ExecFn>(exec) });
++        passes.back().setup();  // run setup immediately
 +    }
 +
 +    void execute();  // v1: just run in declaration order
 +
 +private:
-+    std::vector<RenderPass>    passes_;
-+    std::vector<ResourceDesc>  resources_;
++    std::vector<RenderPass>    passes;
++    std::vector<ResourceDesc>  resources;
 +};
 {{< /code-diff >}}
 
@@ -352,24 +351,24 @@ A pass is two lambdas — setup (runs now, wires the DAG) and execute (stored fo
 {{< code-diff title="v1 — Implementation (frame_graph_v1.cpp)" >}}
 @@ createResource / importResource @@
 +ResourceHandle FrameGraph::createResource(const ResourceDesc& desc) {
-+    resources_.push_back(desc);
-+    return { static_cast<uint32_t>(resources_.size() - 1) };
++    resources.push_back(desc);
++    return { static_cast<uint32_t>(resources.size() - 1) };
 +}
 +
 +ResourceHandle FrameGraph::importResource(const ResourceDesc& desc) {
-+    resources_.push_back(desc);  // v1: same as create (no aliasing yet)
-+    return { static_cast<uint32_t>(resources_.size() - 1) };
++    resources.push_back(desc);  // v1: same as create (no aliasing yet)
++    return { static_cast<uint32_t>(resources.size() - 1) };
 +}
 
 @@ execute — declaration order, no compile step @@
 +void FrameGraph::execute() {
 +    printf("\n[1] Executing (declaration order -- no compile step):\n");
-+    for (auto& pass : passes_) {
++    for (auto& pass : passes) {
 +        printf("  >> exec: %s\n", pass.name.c_str());
 +        pass.execute(/* &cmdList */);
 +    }
-+    passes_.clear();
-+    resources_.clear();
++    passes.clear();
++    resources.clear();
 +}
 {{< /code-diff >}}
 
@@ -443,7 +442,7 @@ The key data structure: each resource entry tracks its **current version** (incr
 Here's what changes from v1. The `ResourceDesc` array becomes `ResourceEntry` — each entry carries a version list. `RenderPass` gains dependency tracking fields. And two new methods, `read()` and `write()`, wire everything together:
 
 {{< code-diff title="v1 → v2 — Resource versioning & dependency tracking" >}}
-@@ New type — version tracking @@
+@@ New type — version tracking (.h) @@
 +struct ResourceVersion {                 // NEW v2
 +    uint32_t writerPass = UINT32_MAX;    // which pass wrote this version
 +    std::vector<uint32_t> readerPasses;  // which passes read it
@@ -455,7 +454,7 @@ Here's what changes from v1. The `ResourceDesc` array becomes `ResourceEntry` �
 +    bool imported = false;   // imported resources: barriers tracked, not aliased
 +};
 
-@@ RenderPass — dependency edges @@
+@@ RenderPass — dependency edges (.h) @@
  struct RenderPass {
      std::string name;
      std::function<void()>             setup;
@@ -465,24 +464,24 @@ Here's what changes from v1. The `ResourceDesc` array becomes `ResourceEntry` �
 +    std::vector<uint32_t> dependsOn;       // NEW v2
  };
 
-@@ FrameGraph — read/write methods @@
+@@ FrameGraph — read/write methods (.h) @@
 +    void read(uint32_t passIdx, ResourceHandle h) {
-+        auto& ver = entries_[h.index].versions.back();
++        auto& ver = entries[h.index].versions.back();
 +        if (ver.writerPass != UINT32_MAX)
-+            passes_[passIdx].dependsOn.push_back(ver.writerPass);
++            passes[passIdx].dependsOn.push_back(ver.writerPass);
 +        ver.readerPasses.push_back(passIdx);
-+        passes_[passIdx].reads.push_back(h);
++        passes[passIdx].reads.push_back(h);
 +    }
 +
 +    void write(uint32_t passIdx, ResourceHandle h) {
-+        entries_[h.index].versions.push_back({});
-+        entries_[h.index].versions.back().writerPass = passIdx;
-+        passes_[passIdx].writes.push_back(h);
++        entries[h.index].versions.push_back({});
++        entries[h.index].versions.back().writerPass = passIdx;
++        passes[passIdx].writes.push_back(h);
 +    }
 
-@@ Storage @@
--    std::vector<ResourceDesc>  resources_;
-+    std::vector<ResourceEntry> entries_;  // now with versioning
+@@ Storage (.h) @@
+-    std::vector<ResourceDesc>  resources;
++    std::vector<ResourceEntry> entries;  // now with versioning
 {{< /code-diff >}}
 
 Every `write()` pushes a new version. Every `read()` finds the current version's writer and records a `dependsOn` edge. Those edges feed the next three steps.
@@ -496,43 +495,43 @@ Every `write()` pushes a new version. Every `read()` finds the current version's
 With edges in place, we need an execution order that respects every dependency. Kahn’s algorithm ([theory refresher](/posts/frame-graph-theory/#sorting-and-culling)) gives us one in O(V+E). `buildEdges()` deduplicates the raw `dependsOn` entries and builds the adjacency list; `topoSort()` does the zero-in-degree queue drain:
 
 {{< code-diff title="v2 — Edge building + Kahn's topological sort" >}}
-@@ RenderPass — new fields for the sort @@
+@@ RenderPass — new fields for the sort (.h) @@
  struct RenderPass {
      ...
 +    std::vector<uint32_t> successors;      // passes that depend on this one
 +    uint32_t inDegree = 0;                 // incoming edge count (Kahn's)
  };
 
-@@ buildEdges() — deduplicate and build adjacency list @@
+@@ buildEdges() — deduplicate and build adjacency list (.cpp) @@
 +    void buildEdges() {
-+        for (uint32_t i = 0; i < passes_.size(); i++) {
++        for (uint32_t i = 0; i < passes.size(); i++) {
 +            std::unordered_set<uint32_t> seen;
-+            for (uint32_t dep : passes_[i].dependsOn) {
++            for (uint32_t dep : passes[i].dependsOn) {
 +                if (seen.insert(dep).second) {
-+                    passes_[dep].successors.push_back(i);
-+                    passes_[i].inDegree++;
++                    passes[dep].successors.push_back(i);
++                    passes[i].inDegree++;
 +                }
 +            }
 +        }
 +    }
 
-@@ topoSort() — Kahn's algorithm, O(V + E) @@
+@@ topoSort() — Kahn's algorithm, O(V + E) (.cpp) @@
 +    std::vector<uint32_t> topoSort() {
 +        std::queue<uint32_t> q;
-+        std::vector<uint32_t> inDeg(passes_.size());
-+        for (uint32_t i = 0; i < passes_.size(); i++) {
-+            inDeg[i] = passes_[i].inDegree;
++        std::vector<uint32_t> inDeg(passes.size());
++        for (uint32_t i = 0; i < passes.size(); i++) {
++            inDeg[i] = passes[i].inDegree;
 +            if (inDeg[i] == 0) q.push(i);
 +        }
 +        std::vector<uint32_t> order;
 +        while (!q.empty()) {
 +            uint32_t cur = q.front(); q.pop();
 +            order.push_back(cur);
-+            for (uint32_t succ : passes_[cur].successors) {
++            for (uint32_t succ : passes[cur].successors) {
 +                if (--inDeg[succ] == 0) q.push(succ);
 +            }
 +        }
-+        assert(order.size() == passes_.size() && "Cycle detected!");
++        assert(order.size() == passes.size() && "Cycle detected!");
 +        return order;
 +    }
 {{< /code-diff >}}
@@ -546,20 +545,20 @@ With edges in place, we need an execution order that respects every dependency. 
 A sorted graph still runs passes nobody reads from. Culling is dead-code elimination for GPU work ([theory refresher](/posts/frame-graph-theory/#sorting-and-culling)) — a single backward walk marks the final pass alive, then propagates through `dependsOn` edges:
 
 {{< code-diff title="v2 — Pass culling" >}}
-@@ RenderPass — new field for culling @@
+@@ RenderPass — new field for culling (.h) @@
  struct RenderPass {
      ...
 +    bool alive = false;                    // survives the cull?
  };
 
-@@ cull() — backward reachability from output @@
+@@ cull() — backward reachability from output (.cpp) @@
 +    void cull(const std::vector<uint32_t>& sorted) {
 +        if (sorted.empty()) return;
-+        passes_[sorted.back()].alive = true;   // last pass = output
++        passes[sorted.back()].alive = true;   // last pass = output
 +        for (int i = (int)sorted.size() - 1; i >= 0; i--) {
-+            if (!passes_[sorted[i]].alive) continue;
-+            for (uint32_t dep : passes_[sorted[i]].dependsOn)
-+                passes_[dep].alive = true;
++            if (!passes[sorted[i]].alive) continue;
++            for (uint32_t dep : passes[sorted[i]].dependsOn)
++                passes[dep].alive = true;
 +        }
 +    }
 {{< /code-diff >}}
@@ -573,23 +572,23 @@ A sorted graph still runs passes nobody reads from. Culling is dead-code elimina
 The GPU needs explicit state transitions between usages — color attachment, shader read, depth, etc. Because the graph already knows every resource’s read/write history ([theory refresher](/posts/frame-graph-theory/#barriers)), the compiler can emit them automatically. Walk each pass’s resources, compare tracked state to what the pass needs, and insert a barrier when they differ:
 
 {{< code-diff title="v2 — Barrier insertion + execute() rewrite" >}}
-@@ New type — resource state tracking @@
+@@ New type — resource state tracking (.h) @@
 +enum class ResourceState { Undefined, ColorAttachment, DepthAttachment,
 +                           ShaderRead, Present };
 
-@@ ResourceEntry — track current state @@
+@@ ResourceEntry — track current state (.h) @@
  struct ResourceEntry {
      ...
 +    ResourceState currentState = ResourceState::Undefined;
  };
 
-@@ importResource — now accepts an initial state @@
+@@ importResource — now accepts an initial state (.h) @@
 +    ResourceHandle importResource(const ResourceDesc& desc, ResourceState initial) {
-+        entries_.push_back({desc, {{}}, initial, /*imported=*/true});
-+        return { static_cast<uint32_t>(entries_.size() - 1) };
++        entries.push_back({desc, {{}}, initial, /*imported=*/true});
++        return { static_cast<uint32_t>(entries.size() - 1) };
 +    }
 
-@@ insertBarriers() — emit transitions where state changes @@
+@@ insertBarriers() — emit transitions where state changes (.cpp) @@
 +    void insertBarriers(uint32_t passIdx) {
 +        auto stateForUsage = [](bool isWrite, Format fmt) {
 +            if (isWrite)
@@ -597,33 +596,33 @@ The GPU needs explicit state transitions between usages — color attachment, sh
 +                                             : ResourceState::ColorAttachment;
 +            return ResourceState::ShaderRead;
 +        };
-+        for (auto& h : passes_[passIdx].reads) {
++        for (auto& h : passes[passIdx].reads) {
 +            ResourceState needed = ResourceState::ShaderRead;
-+            if (entries_[h.index].currentState != needed) {
++            if (entries[h.index].currentState != needed) {
 +                // emit barrier: old state → new state
-+                entries_[h.index].currentState = needed;
++                entries[h.index].currentState = needed;
 +            }
 +        }
-+        for (auto& h : passes_[passIdx].writes) {
-+            ResourceState needed = stateForUsage(true, entries_[h.index].desc.format);
-+            if (entries_[h.index].currentState != needed) {
-+                entries_[h.index].currentState = needed;
++        for (auto& h : passes[passIdx].writes) {
++            ResourceState needed = stateForUsage(true, entries[h.index].desc.format);
++            if (entries[h.index].currentState != needed) {
++                entries[h.index].currentState = needed;
 +            }
 +        }
 +    }
 
-@@ execute() — the full v2 pipeline @@
+@@ execute() — the full v2 pipeline (.cpp) @@
 -    // v1: just run every pass in declaration order.
--    for (auto& pass : passes_)
+-    for (auto& pass : passes)
 -        pass.execute();
 +    // v2: build edges, topo-sort, cull, then run in sorted order.
 +    buildEdges();
 +    auto sorted = topoSort();   // Kahn's algorithm — O(V+E)
 +    cull(sorted);               // backward walk from output
 +    for (uint32_t idx : sorted) {
-+        if (!passes_[idx].alive) continue;  // skip dead
++        if (!passes[idx].alive) continue;  // skip dead
 +        insertBarriers(idx);                // auto barriers
-+        passes_[idx].execute();
++        passes[idx].execute();
 +    }
 {{< /code-diff >}}
 
@@ -653,10 +652,9 @@ V2 gives us ordering, culling, and barriers — but every transient resource sti
 Two new structs — a `Lifetime` per resource and a `PhysicalBlock` per heap slot. The lifetime scan walks the sorted pass list, recording each transient resource's `firstUse` / `lastUse` indices:
 
 {{< code-diff title="v2 → v3 — Lifetime structs & scan" >}}
-@@ New structs @@
+@@ New structs (.h) @@
 +struct PhysicalBlock {              // physical memory slot
 +    uint32_t sizeBytes  = 0;
-+    Format   format     = Format::RGBA8;
 +    uint32_t availAfter = 0;        // free after this pass index
 +};
 +
@@ -666,23 +664,23 @@ Two new structs — a `Lifetime` per resource and a `PhysicalBlock` per heap slo
 +    bool     isTransient = true;
 +};
 
-@@ scanLifetimes() — walk sorted passes, record first/last use @@
+@@ scanLifetimes() — walk sorted passes, record first/last use (.cpp) @@
 +    std::vector<Lifetime> scanLifetimes(const std::vector<uint32_t>& sorted) {
-+        std::vector<Lifetime> life(entries_.size());
++        std::vector<Lifetime> life(entries.size());
 +        for (uint32_t order = 0; order < sorted.size(); order++) {
-+            if (!passes_[sorted[order]].alive) continue;
-+            for (auto& h : passes_[sorted[order]].reads) {
++            if (!passes[sorted[order]].alive) continue;
++            for (auto& h : passes[sorted[order]].reads) {
 +                life[h.index].firstUse = std::min(life[h.index].firstUse, order);
 +                life[h.index].lastUse  = std::max(life[h.index].lastUse,  order);
 +            }
-+            for (auto& h : passes_[sorted[order]].writes) {
++            for (auto& h : passes[sorted[order]].writes) {
 +                life[h.index].firstUse = std::min(life[h.index].firstUse, order);
 +                life[h.index].lastUse  = std::max(life[h.index].lastUse,  order);
 +            }
 +        }
 +        // imported resources are externally owned — exclude from aliasing
-+        for (size_t i = 0; i < entries_.size(); i++) {
-+            if (entries_[i].imported) life[i].isTransient = false;
++        for (size_t i = 0; i < entries.size(); i++) {
++            if (entries[i].imported) life[i].isTransient = false;
 +        }
 +        return life;
 +    }
@@ -693,13 +691,13 @@ This requires **placed resources** at the API level — GPU memory allocated fro
 The second half of the algorithm — the greedy free-list allocator. Sort resources by `firstUse`, then try to fit each one into an existing block whose previous user has finished:
 
 {{< code-diff title="v3 — Greedy free-list aliasing + compile() integration" >}}
-@@ aliasResources() — greedy free-list scan @@
+@@ aliasResources() — greedy free-list scan (.cpp) @@
 +    std::vector<uint32_t> aliasResources(const std::vector<Lifetime>& lifetimes) {
 +        std::vector<PhysicalBlock> freeList;
-+        std::vector<uint32_t> mapping(entries_.size(), UINT32_MAX);
++        std::vector<uint32_t> mapping(entries.size(), UINT32_MAX);
 +
 +        // sort resources by firstUse
-+        std::vector<uint32_t> indices(entries_.size());
++        std::vector<uint32_t> indices(entries.size());
 +        std::iota(indices.begin(), indices.end(), 0);
 +        std::sort(indices.begin(), indices.end(), [&](uint32_t a, uint32_t b) {
 +            return lifetimes[a].firstUse < lifetimes[b].firstUse;
@@ -720,13 +718,13 @@ The second half of the algorithm — the greedy free-list allocator. Sort resour
 +            }
 +            if (!reused) {
 +                mapping[resIdx] = freeList.size();
-+                freeList.push_back({ needed, fmt, lifetimes[resIdx].lastUse });
++                freeList.push_back({ needed, lifetimes[resIdx].lastUse });
 +            }
 +        }
 +        return mapping;
 +    }
 
-@@ compile() — v3 adds lifetime scan + aliasing @@
+@@ compile() — v3 adds lifetime scan + aliasing (.cpp) @@
      auto sorted = topoSort();
      cull(sorted);
 +    auto lifetimes = scanLifetimes(sorted);     // NEW v3

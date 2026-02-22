@@ -1,7 +1,6 @@
 // Frame Graph MVP v3 -- Usage Example
 // Compile: g++ -std=c++17 -o example_v3 example_v3.cpp frame_graph_v3.cpp
 #include "frame_graph_v3.h"
-#include "frame_graph_v3.cpp"  // single-TU build (Godbolt)
 #include <cstdio>
 
 int main() {

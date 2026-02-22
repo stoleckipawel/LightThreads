@@ -1,7 +1,7 @@
 #include "frame_graph_v1.h"
 #include <cstdio>
 
-// â”€â”€ FrameGraph implementation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// == FrameGraph implementation =================================
 
 ResourceHandle FrameGraph::createResource(const ResourceDesc& desc) {
     resources.push_back(desc);

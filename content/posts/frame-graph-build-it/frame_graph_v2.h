@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-// â”€â”€ Resource description (virtual until compile) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// == Resource description (virtual until compile) ==============
 enum class Format { RGBA8, RGBA16F, R8, D32F };
 
 struct ResourceDesc {
@@ -24,7 +24,7 @@ struct ResourceHandle {
     bool isValid() const { return index != UINT32_MAX; }
 };
 
-// â”€â”€ Resource state tracking (NEW v2) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// == Resource state tracking (NEW v2) ==========================
 enum class ResourceState { Undefined, ColorAttachment, DepthAttachment,
                            ShaderRead, Present };
 
@@ -52,7 +52,7 @@ struct ResourceEntry {
     bool imported = false;   // imported resources are not owned by the graph
 };
 
-// â”€â”€ Updated render pass â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// == Updated render pass =======================================
 struct RenderPass {
     std::string name;
     std::function<void()>             setup;
@@ -66,7 +66,7 @@ struct RenderPass {
     bool     alive    = false;            // NEW v2 â€” for culling
 };
 
-// â”€â”€ Updated FrameGraph â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// == Updated FrameGraph ========================================
 class FrameGraph {
 public:
     ResourceHandle createResource(const ResourceDesc& desc);

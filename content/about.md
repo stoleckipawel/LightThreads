@@ -168,43 +168,6 @@ showWordCount: false
 
 ---
 
-## What I Write About
-
-<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.8em;margin:1.2em 0 2em;">
-  <div class="about-card" style="padding:.85em 1em;border-radius:10px;border:1px solid rgba(var(--ds-accent-rgb),.15);background:rgba(var(--ds-accent-rgb),.03);cursor:default;">
-<div class="card-icon" style="font-size:1.15em;margin-bottom:.25em;">🛠️</div>
-    <div style="font-weight:700;font-size:.92em;margin-bottom:.2em;">Rendering Engine Design</div>
-    <div style="font-size:.84em;opacity:.7;line-height:1.5;">APIs, modular architecture, maintainability, and pragmatic release strategies.</div>
-  </div>
-  <div class="about-card" style="padding:.85em 1em;border-radius:10px;border:1px solid rgba(var(--ds-accent-rgb),.15);background:rgba(var(--ds-accent-rgb),.03);cursor:default;">
-    <div class="card-icon" style="font-size:1.15em;margin-bottom:.25em;">⚙️</div>
-    <div style="font-weight:700;font-size:.92em;margin-bottom:.2em;">Engine Systems & Trade-offs</div>
-    <div style="font-size:.84em;opacity:.7;line-height:1.5;">High-performance game systems and real-time application architecture.</div>
-  </div>
-  <div class="about-card" style="padding:.85em 1em;border-radius:10px;border:1px solid rgba(var(--ds-accent-rgb),.15);background:rgba(var(--ds-accent-rgb),.03);cursor:default;">
-    <div class="card-icon" style="font-size:1.15em;margin-bottom:.25em;">⚡</div>
-    <div style="font-weight:700;font-size:.92em;margin-bottom:.2em;">GPU-Aware Performance</div>
-    <div style="font-size:.84em;opacity:.7;line-height:1.5;">Memory layout, bandwidth vs compute trade-offs, batching, and caching.</div>
-  </div>
-  <div class="about-card" style="padding:.85em 1em;border-radius:10px;border:1px solid rgba(var(--ds-accent-rgb),.15);background:rgba(var(--ds-accent-rgb),.03);cursor:default;">
-    <div class="card-icon" style="font-size:1.15em;margin-bottom:.25em;">🎨</div>
-    <div style="font-weight:700;font-size:.92em;margin-bottom:.2em;">PBR & Light Transport</div>
-    <div style="font-size:.84em;opacity:.7;line-height:1.5;">Useful patterns for physically based rendering, sampling, and denoising.</div>
-  </div>
-  <div class="about-card" style="padding:.85em 1em;border-radius:10px;border:1px solid rgba(var(--ds-accent-rgb),.15);background:rgba(var(--ds-accent-rgb),.03);cursor:default;">
-    <div class="card-icon" style="font-size:1.15em;margin-bottom:.25em;">✨</div>
-    <div style="font-weight:700;font-size:.92em;margin-bottom:.2em;">Ray Tracing Pipelines</div>
-    <div style="font-size:.84em;opacity:.7;line-height:1.5;">Getting quality where it matters without breaking the frame budget.</div>
-  </div>
-  <div class="about-card" style="padding:.85em 1em;border-radius:10px;border:1px solid rgba(var(--ds-accent-rgb),.15);background:rgba(var(--ds-accent-rgb),.03);cursor:default;">
-    <div class="card-icon" style="font-size:1.15em;margin-bottom:.25em;">🔍</div>
-    <div style="font-weight:700;font-size:.92em;margin-bottom:.2em;">Profiling & Shader Tuning</div>
-    <div style="font-size:.84em;opacity:.7;line-height:1.5;">Small tooling that makes performance work repeatable and measurable.</div>
-  </div>
-</div>
-
----
-
 ## About the Author
 
 <div class="about-author" style="position:relative;margin:1.2em 0 1.5em;padding:1.3em 1.5em 1.3em 1.8em;border-radius:12px;border:1.5px solid rgba(var(--ds-accent-rgb),.18);background:linear-gradient(135deg,rgba(var(--ds-accent-rgb),.05) 0%,rgba(var(--ds-highlight-rgb),.02) 60%,transparent 100%);line-height:1.7;overflow:hidden;">

@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-// â”€â”€ Resource description (virtual until compile) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// == Resource description (virtual until compile) ==============
 enum class Format { RGBA8, RGBA16F, R8, D32F };
 
 struct ResourceDesc {
@@ -26,14 +26,14 @@ struct ResourceHandle {
     bool isValid() const { return index != UINT32_MAX; }
 };
 
-// â”€â”€ Render pass â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// == Render pass ===============================================
 struct RenderPass {
     std::string                        name;
     std::function<void()>              setup;    // build the DAG (v1: unused)
     std::function<void(/*cmd list*/)>  execute;  // record GPU commands
 };
 
-// â”€â”€ Frame graph â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// == Frame graph ===============================================
 class FrameGraph {
 public:
     // Create a virtual resource -- returns a handle, not GPU memory.
