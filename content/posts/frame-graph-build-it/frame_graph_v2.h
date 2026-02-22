@@ -1,5 +1,5 @@
 #pragma once
-// Frame Graph MVP v2 — Dependencies & Barriers
+// Frame Graph MVP v2 â€” Dependencies & Barriers
 // Adds: resource versioning, DAG with adjacency list, Kahn's topo-sort,
 //       pass culling, and automatic barrier insertion.
 //
@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-// ── Resource description (virtual until compile) ──────────────
+// â”€â”€ Resource description (virtual until compile) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 enum class Format { RGBA8, RGBA16F, R8, D32F };
 
 struct ResourceDesc {
@@ -24,7 +24,7 @@ struct ResourceHandle {
     bool isValid() const { return index != UINT32_MAX; }
 };
 
-// ── Resource state tracking (NEW v2) ──────────────────────────
+// â”€â”€ Resource state tracking (NEW v2) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 enum class ResourceState { Undefined, ColorAttachment, DepthAttachment,
                            ShaderRead, Present };
 
@@ -52,7 +52,7 @@ struct ResourceEntry {
     bool imported = false;   // imported resources are not owned by the graph
 };
 
-// ── Updated render pass ───────────────────────────────────────
+// â”€â”€ Updated render pass â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 struct RenderPass {
     std::string name;
     std::function<void()>             setup;
@@ -60,13 +60,13 @@ struct RenderPass {
 
     std::vector<ResourceHandle> reads;    // NEW v2
     std::vector<ResourceHandle> writes;   // NEW v2
-    std::vector<uint32_t> dependsOn;      // NEW v2 — passes this pass depends on
-    std::vector<uint32_t> successors;     // NEW v2 — passes that depend on this pass
-    uint32_t inDegree = 0;                // NEW v2 — for Kahn's
-    bool     alive    = false;            // NEW v2 — for culling
+    std::vector<uint32_t> dependsOn;      // NEW v2 â€” passes this pass depends on
+    std::vector<uint32_t> successors;     // NEW v2 â€” passes that depend on this pass
+    uint32_t inDegree = 0;                // NEW v2 â€” for Kahn's
+    bool     alive    = false;            // NEW v2 â€” for culling
 };
 
-// ── Updated FrameGraph ────────────────────────────────────────
+// â”€â”€ Updated FrameGraph â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class FrameGraph {
 public:
     ResourceHandle createResource(const ResourceDesc& desc);
@@ -76,27 +76,27 @@ public:
     ResourceHandle importResource(const ResourceDesc& desc,
                                   ResourceState initialState = ResourceState::Undefined);
 
-    // Declare a read — links this pass to the resource's current version.
+    // Declare a read â€” links this pass to the resource's current version.
     void read(uint32_t passIdx, ResourceHandle h);    // NEW v2
 
-    // Declare a write — creates a new version of the resource.
+    // Declare a write â€” creates a new version of the resource.
     void write(uint32_t passIdx, ResourceHandle h);   // NEW v2
 
     template <typename SetupFn, typename ExecFn>
     void addPass(const std::string& name, SetupFn&& setup, ExecFn&& exec) {
-        uint32_t idx = static_cast<uint32_t>(passes_.size());
-        passes_.push_back({ name, std::forward<SetupFn>(setup),
+        uint32_t idx = static_cast<uint32_t>(passes.size());
+        passes.push_back({ name, std::forward<SetupFn>(setup),
                                    std::forward<ExecFn>(exec) });
-        currentPass_ = idx;   // NEW v2 — so setup can call read()/write()
-        passes_.back().setup();
+        currentPass = idx;   // NEW v2 â€” so setup can call read()/write()
+        passes.back().setup();
     }
 
     void execute();
 
 private:
-    uint32_t currentPass_ = 0;
-    std::vector<RenderPass>    passes_;
-    std::vector<ResourceEntry> entries_;
+    uint32_t currentPass = 0;
+    std::vector<RenderPass>    passes;
+    std::vector<ResourceEntry> entries;
 
     void buildEdges();                                // NEW v2
     std::vector<uint32_t> topoSort();                 // NEW v2

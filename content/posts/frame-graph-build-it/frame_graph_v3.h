@@ -1,5 +1,5 @@
 #pragma once
-// Frame Graph MVP v3 — Lifetimes & Aliasing
+// Frame Graph MVP v3 â€” Lifetimes & Aliasing
 // Adds: lifetime analysis, greedy free-list memory aliasing.
 // Builds on v2 (dependencies, topo-sort, culling, barriers).
 //
@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-// ── Resource description (virtual until compile) ──────────────
+// â”€â”€ Resource description (virtual until compile) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 enum class Format { RGBA8, RGBA16F, R8, D32F };
 
 struct ResourceDesc {
@@ -24,7 +24,7 @@ struct ResourceHandle {
     bool isValid() const { return index != UINT32_MAX; }
 };
 
-// ── Resource state tracking ───────────────────────────────────
+// â”€â”€ Resource state tracking â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 enum class ResourceState { Undefined, ColorAttachment, DepthAttachment,
                            ShaderRead, Present };
 
@@ -51,14 +51,14 @@ struct ResourceEntry {
     bool imported = false;   // imported resources are not owned by the graph
 };
 
-// ── Physical memory block (NEW v3) ────────────────────────────
+// â”€â”€ Physical memory block (NEW v3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 struct PhysicalBlock {
     uint32_t sizeBytes   = 0;
     Format   format      = Format::RGBA8;
     uint32_t availAfter  = 0;  // pass index after which this block is free
 };
 
-// ── Bytes-per-pixel helper (NEW v3) ───────────────────────────
+// â”€â”€ Bytes-per-pixel helper (NEW v3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 inline uint32_t bytesPerPixel(Format fmt) {
     switch (fmt) {
         case Format::R8:      return 1;
@@ -69,14 +69,14 @@ inline uint32_t bytesPerPixel(Format fmt) {
     }
 }
 
-// ── Lifetime info per resource (NEW v3) ───────────────────────
+// â”€â”€ Lifetime info per resource (NEW v3) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 struct Lifetime {
     uint32_t firstUse = UINT32_MAX;
     uint32_t lastUse  = 0;
     bool     isTransient = true;
 };
 
-// ── Render pass ───────────────────────────────────────────────
+// â”€â”€ Render pass â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 struct RenderPass {
     std::string name;
     std::function<void()>             setup;
@@ -90,7 +90,7 @@ struct RenderPass {
     bool     alive    = false;
 };
 
-// ── Frame graph (v3: full MVP) ────────────────────────────────
+// â”€â”€ Frame graph (v3: full MVP) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class FrameGraph {
 public:
     ResourceHandle createResource(const ResourceDesc& desc);
@@ -102,31 +102,31 @@ public:
 
     template <typename SetupFn, typename ExecFn>
     void addPass(const std::string& name, SetupFn&& setup, ExecFn&& exec) {
-        uint32_t idx = static_cast<uint32_t>(passes_.size());
-        passes_.push_back({ name, std::forward<SetupFn>(setup),
+        uint32_t idx = static_cast<uint32_t>(passes.size());
+        passes.push_back({ name, std::forward<SetupFn>(setup),
                                    std::forward<ExecFn>(exec) });
-        currentPass_ = idx;
-        passes_.back().setup();
+        currentPass = idx;
+        passes.back().setup();
     }
 
-    // ── v3: compile — builds the execution plan + allocates memory ──
+    // â”€â”€ v3: compile â€” builds the execution plan + allocates memory â”€â”€
     struct CompiledPlan {
         std::vector<uint32_t> sorted;
-        std::vector<uint32_t> mapping;   // mapping[virtualIdx] → physicalBlock
+        std::vector<uint32_t> mapping;   // mapping[virtualIdx] â†’ physicalBlock
     };
 
     CompiledPlan compile();
 
-    // ── v3: execute — runs the compiled plan ─────────────────
+    // â”€â”€ v3: execute â€” runs the compiled plan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     void execute(const CompiledPlan& plan);
 
     // convenience: compile + execute in one call
     void execute();
 
 private:
-    uint32_t currentPass_ = 0;
-    std::vector<RenderPass>    passes_;
-    std::vector<ResourceEntry> entries_;
+    uint32_t currentPass = 0;
+    std::vector<RenderPass>    passes;
+    std::vector<ResourceEntry> entries;
 
     void buildEdges();
     std::vector<uint32_t> topoSort();

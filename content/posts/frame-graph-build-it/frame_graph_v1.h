@@ -1,5 +1,5 @@
 #pragma once
-// Frame Graph MVP v1 — Declare & Execute
+// Frame Graph MVP v1 -- Declare & Execute
 // No dependency tracking, no barriers, no aliasing.
 // Passes execute in declaration order.
 //
@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-// ── Resource description (virtual until compile) ──────────────
+// â”€â”€ Resource description (virtual until compile) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 enum class Format { RGBA8, RGBA16F, R8, D32F };
 
 struct ResourceDesc {
@@ -20,23 +20,23 @@ struct ResourceDesc {
 };
 
 // Handle = typed index into the graph's resource array.
-// No GPU memory behind it yet — just a number.
+// No GPU memory behind it yet -- just a number.
 struct ResourceHandle {
     uint32_t index = UINT32_MAX;
     bool isValid() const { return index != UINT32_MAX; }
 };
 
-// ── Render pass ───────────────────────────────────────────────
+// â”€â”€ Render pass â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 struct RenderPass {
     std::string                        name;
     std::function<void()>              setup;    // build the DAG (v1: unused)
     std::function<void(/*cmd list*/)>  execute;  // record GPU commands
 };
 
-// ── Frame graph ───────────────────────────────────────────────
+// â”€â”€ Frame graph â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class FrameGraph {
 public:
-    // Create a virtual resource — returns a handle, not GPU memory.
+    // Create a virtual resource -- returns a handle, not GPU memory.
     ResourceHandle createResource(const ResourceDesc& desc);
 
     // Import an external resource (e.g. swapchain backbuffer).
@@ -46,15 +46,15 @@ public:
     // Register a pass. Setup runs now; execute is stored for later.
     template <typename SetupFn, typename ExecFn>
     void addPass(const std::string& name, SetupFn&& setup, ExecFn&& exec) {
-        passes_.push_back({ name, std::forward<SetupFn>(setup),
+        passes.push_back({ name, std::forward<SetupFn>(setup),
                                    std::forward<ExecFn>(exec) });
-        passes_.back().setup();  // run setup immediately
+        passes.back().setup();  // run setup immediately
     }
 
-    // Compile + execute. v1 is trivial — just run in declaration order.
+    // Compile + execute. v1 is trivial -- just run in declaration order.
     void execute();
 
 private:
-    std::vector<RenderPass>    passes_;
-    std::vector<ResourceDesc>  resources_;
+    std::vector<RenderPass>    passes;
+    std::vector<ResourceDesc>  resources;
 };
