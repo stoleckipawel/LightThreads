@@ -56,6 +56,7 @@ struct ResourceEntry {
     ResourceDesc desc;
     std::vector<ResourceVersion> versions;  // version 0, 1, 2...
     ResourceState currentState = ResourceState::Undefined;
+    bool imported = false;   // imported resources are not owned by the graph
 };
 
 // ── Updated render pass ───────────────────────────────────────
@@ -76,7 +77,15 @@ struct RenderPass {
 class FrameGraph {
 public:
     ResourceHandle createResource(const ResourceDesc& desc) {
-        entries_.push_back({ desc, {{}}, ResourceState::Undefined });
+        entries_.push_back({ desc, {{}}, ResourceState::Undefined, false });
+        return { static_cast<uint32_t>(entries_.size() - 1) };
+    }
+
+    // Import an external resource (e.g. swapchain backbuffer).
+    // The graph tracks barriers but does not own or alias its memory.
+    ResourceHandle importResource(const ResourceDesc& desc,
+                                  ResourceState initialState = ResourceState::Undefined) {
+        entries_.push_back({ desc, {{}}, initialState, true });
         return { static_cast<uint32_t>(entries_.size() - 1) };
     }
 

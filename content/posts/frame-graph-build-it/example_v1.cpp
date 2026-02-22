@@ -7,6 +7,11 @@ int main() {
     printf("=== Frame Graph v1: Declare & Execute ===\n");
 
     FrameGraph fg;
+
+    // Import the swapchain backbuffer — the graph tracks barriers
+    // but does not own its memory (it lives outside the frame).
+    auto backbuffer = fg.importResource({1920, 1080, Format::RGBA8});
+
     auto depth = fg.createResource({1920, 1080, Format::D32F});
     auto gbufA = fg.createResource({1920, 1080, Format::RGBA8});
     auto gbufN = fg.createResource({1920, 1080, Format::RGBA8});
@@ -23,6 +28,10 @@ int main() {
     fg.addPass("Lighting",
         [&]() { /* setup */ },
         [&](/*cmd*/) { /* fullscreen lighting pass */ });
+
+    fg.addPass("Present",
+        [&]() { /* setup */ },
+        [&](/*cmd*/) { /* copy hdr → backbuffer, present */ });
 
     fg.execute();
     return 0;

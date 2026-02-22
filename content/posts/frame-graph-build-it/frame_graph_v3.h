@@ -56,6 +56,7 @@ struct ResourceEntry {
     ResourceDesc desc;
     std::vector<ResourceVersion> versions;
     ResourceState currentState = ResourceState::Undefined;
+    bool imported = false;   // imported resources are not owned by the graph
 };
 
 // ── Physical memory block (NEW v3) ────────────────────────────
@@ -104,7 +105,13 @@ public:
         entries_.push_back({ desc, {{}}, ResourceState::Undefined });
         return { static_cast<uint32_t>(entries_.size() - 1) };
     }
-
+    // Import an external resource (e.g. swapchain backbuffer).
+    // The graph tracks barriers but does not own or alias its memory.
+    ResourceHandle importResource(const ResourceDesc& desc,
+                                  ResourceState initialState = ResourceState::Undefined) {
+        entries_.push_back({ desc, {{}}, initialState, true });
+        return { static_cast<uint32_t>(entries_.size() - 1) };
+    }
     void read(uint32_t passIdx, ResourceHandle h) {
         auto& ver = entries_[h.index].versions.back();
         if (ver.writerPass != UINT32_MAX) {
@@ -265,6 +272,11 @@ private:
     // ── Scan lifetimes (NEW v3) ───────────────────────────────
     std::vector<Lifetime> scanLifetimes(const std::vector<uint32_t>& sorted) {
         std::vector<Lifetime> life(entries_.size());
+
+        // Imported resources are not transient — skip them during aliasing.
+        for (uint32_t i = 0; i < entries_.size(); i++) {
+            if (entries_[i].imported) life[i].isTransient = false;
+        }
 
         for (uint32_t order = 0; order < sorted.size(); order++) {
             uint32_t passIdx = sorted[order];

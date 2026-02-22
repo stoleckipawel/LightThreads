@@ -69,80 +69,202 @@ showTableOfContents: false
 
 ---
 
-## 🏗️ API Design & First Prototype
+## 🏗️ Architecture & API Decisions
 
 We start from the API you *want* to write, then build toward it — starting with bare scaffolding and ending with automatic barriers and memory aliasing.
 
-### 🎯 Design principles
+<!-- UML class diagram — API overview -->
+{{< mermaid >}}
+classDiagram
+    direction LR
 
-<div style="margin:1em 0 1.4em;display:grid;grid-template-columns:repeat(3,1fr);gap:.8em;">
-  <div style="padding:1em;border-radius:10px;border-top:3px solid var(--ds-info);background:rgba(var(--ds-info-rgb),.04);">
-    <div style="font-weight:800;font-size:.92em;margin-bottom:.4em;color:var(--ds-info);">λ² &ensp;Two lambdas</div>
-    <div style="font-size:.86em;line-height:1.6;opacity:.85;">
-      <strong>Setup</strong> — runs at declaration. Declares reads &amp; writes. No GPU work.<br>
-      <strong>Execute</strong> — runs later. Records GPU commands into a fully resolved environment.
+    class FrameGraph {
+        -vector passes_
+        -vector entries_
+        +createResource(desc) ResourceHandle
+        +importResource(desc, state) ResourceHandle
+        +addPass(name, setup, execute) void
+        +read(passIdx, handle) void
+        +write(passIdx, handle) void
+        +compile() Plan
+        +execute(plan) void
+    }
+
+    class RenderPass {
+        +string name
+        +function setup
+        +function execute
+        +vector reads
+        +vector writes
+        +vector dependsOn
+        +bool alive
+    }
+
+    class ResourceHandle {
+        +uint32_t index
+        +isValid() bool
+    }
+
+    class ResourceDesc {
+        +uint32_t width
+        +uint32_t height
+        +Format format
+    }
+
+    class ResourceEntry {
+        +ResourceDesc desc
+        +vector versions
+        +ResourceState currentState
+        +bool imported
+    }
+
+    class ResourceVersion {
+        +uint32_t writerPass
+        +vector readerPasses
+    }
+
+    class Lifetime {
+        +uint32_t firstUse
+        +uint32_t lastUse
+        +bool isTransient
+    }
+
+    class PhysicalBlock {
+        +uint32_t sizeBytes
+        +Format format
+        +uint32_t availAfter
+    }
+
+    class Format {
+        RGBA8
+        RGBA16F
+        R8
+        D32F
+    }
+    note for Format "enum"
+
+    class ResourceState {
+        Undefined
+        ColorAttachment
+        DepthAttachment
+        ShaderRead
+        Present
+    }
+    note for ResourceState "enum"
+
+    FrameGraph *-- RenderPass : owns
+    FrameGraph *-- ResourceEntry : owns
+    ResourceEntry *-- ResourceDesc
+    ResourceEntry *-- ResourceVersion
+    RenderPass --> ResourceHandle : references
+    FrameGraph ..> ResourceHandle : creates
+    FrameGraph ..> Lifetime : computes
+    FrameGraph ..> PhysicalBlock : allocates
+    ResourceEntry --> ResourceState
+    ResourceDesc --> Format
+{{< /mermaid >}}
+
+### 🔀 Design choices
+
+The three-phase model from [Part I](../frame-graph-theory/) forces eight API decisions. Every choice is driven by the same question: *what does the graph compiler need, and what's the cheapest way to give it?*
+
+<div style="margin:1.2em 0;font-size:.88em;">
+<table style="width:100%;border-collapse:collapse;line-height:1.5;">
+<thead>
+<tr style="border-bottom:2px solid rgba(var(--ds-indigo-rgb),.15);text-align:left;">
+  <th style="padding:.5em .6em;width:2.5em;">#</th>
+  <th style="padding:.5em .6em;">Question</th>
+  <th style="padding:.5em .6em;">Our pick</th>
+  <th style="padding:.5em .6em;">Why</th>
+</tr>
+</thead>
+<tbody>
+<tr style="border-bottom:1px solid rgba(var(--ds-indigo-rgb),.08);">
+  <td style="padding:.5em .6em;font-weight:700;">①</td>
+  <td style="padding:.5em .6em;">How does setup talk to execute?</td>
+  <td style="padding:.5em .6em;white-space:nowrap;"><strong>Lambda captures</strong></td>
+  <td style="padding:.5em .6em;opacity:.8;">Handles live in scope — both lambdas capture them. No per-pass struct, no type-erasure. Frostbite/UE5 use typed pass data (<code>addPass&lt;Data&gt;</code>) for cross-TU decoupling; we skip that boilerplate.</td>
+</tr>
+<tr style="border-bottom:1px solid rgba(var(--ds-indigo-rgb),.08);background:rgba(var(--ds-indigo-rgb),.02);">
+  <td style="padding:.5em .6em;font-weight:700;">②</td>
+  <td style="padding:.5em .6em;">Where do DAG edges come from?</td>
+  <td style="padding:.5em .6em;white-space:nowrap;"><strong>Direct <code>read/write</code></strong></td>
+  <td style="padding:.5em .6em;opacity:.8;"><code>fg.read(passIdx, h)</code> — flat API, every edge is a visible call. Production engines use a scoped builder that auto-binds edges to the current pass; we trade that safety for transparency.</td>
+</tr>
+<tr style="border-bottom:1px solid rgba(var(--ds-indigo-rgb),.08);">
+  <td style="padding:.5em .6em;font-weight:700;">③</td>
+  <td style="padding:.5em .6em;">What is a resource handle?</td>
+  <td style="padding:.5em .6em;white-space:nowrap;"><strong>Plain <code>uint32_t</code> index</strong></td>
+  <td style="padding:.5em .6em;opacity:.8;">Trivially copyable, O(1) lookup during lifetime scanning. UE5 uses typed wrappers (<code>FRDGTextureRef</code>) for compile-time safety at scale; a single <code>using</code> alias is enough for us.</td>
+</tr>
+<tr style="border-bottom:1px solid rgba(var(--ds-indigo-rgb),.08);background:rgba(var(--ds-indigo-rgb),.02);">
+  <td style="padding:.5em .6em;font-weight:700;">④</td>
+  <td style="padding:.5em .6em;">Is compile explicit?</td>
+  <td style="padding:.5em .6em;white-space:nowrap;"><strong>Yes — <code>compile()→execute(plan)</code></strong></td>
+  <td style="padding:.5em .6em;opacity:.8;">The plan (sorted order, barriers, aliasing map) is a returned struct you can inspect. Frostbite showed <code>setup → compile → execute</code> as three distinct phases; we mirror that directly.</td>
+</tr>
+<tr style="border-bottom:1px solid rgba(var(--ds-indigo-rgb),.08);">
+  <td style="padding:.5em .6em;font-weight:700;">⑤</td>
+  <td style="padding:.5em .6em;">Resource ownership?</td>
+  <td style="padding:.5em .6em;white-space:nowrap;"><strong>Transient + imported</strong></td>
+  <td style="padding:.5em .6em;opacity:.8;"><code>createResource()</code> → transient (aliasable). <code>importResource()</code> → externally owned (barriers only, not aliased). The swapchain backbuffer is imported; everything else is transient. Matches UE5's <code>CreateTexture</code> / <code>RegisterExternalTexture</code> split.</td>
+</tr>
+<tr style="border-bottom:1px solid rgba(var(--ds-indigo-rgb),.08);background:rgba(var(--ds-indigo-rgb),.02);">
+  <td style="padding:.5em .6em;font-weight:700;">⑥</td>
+  <td style="padding:.5em .6em;">How does culling find the root?</td>
+  <td style="padding:.5em .6em;white-space:nowrap;"><strong>Last sorted pass</strong></td>
+  <td style="padding:.5em .6em;opacity:.8;">The final pass in topological order is the output root. The Present pass naturally lands there. UE5/Frostbite use write-to-imported heuristics + <code>NeverCull</code> flags for multiple roots; straightforward upgrade path.</td>
+</tr>
+<tr style="border-bottom:1px solid rgba(var(--ds-indigo-rgb),.08);">
+  <td style="padding:.5em .6em;font-weight:700;">⑦</td>
+  <td style="padding:.5em .6em;">Queue model?</td>
+  <td style="padding:.5em .6em;white-space:nowrap;"><strong>Single graphics queue</strong></td>
+  <td style="padding:.5em .6em;opacity:.8;">Barriers are simple state transitions — no fences or ownership transfers. Multi-queue is a compiler feature on <em>top</em> of the DAG; <a href="../frame-graph-advanced/">Part III</a> covers async compute.</td>
+</tr>
+<tr style="border-bottom:1px solid rgba(var(--ds-indigo-rgb),.08);background:rgba(var(--ds-indigo-rgb),.02);">
+  <td style="padding:.5em .6em;font-weight:700;">⑧</td>
+  <td style="padding:.5em .6em;">Rebuild frequency?</td>
+  <td style="padding:.5em .6em;white-space:nowrap;"><strong>Full rebuild every frame</strong></td>
+  <td style="padding:.5em .6em;opacity:.8;">At ~25 passes the compile is under 100 µs. Full rebuild means the graph adapts to resolution changes, debug toggles, and feature flags automatically — no invalidation logic.</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<div style="margin:1.4em 0;display:grid;grid-template-columns:1fr 1fr;gap:.8em;font-size:.85em;">
+  <div style="padding:.8em 1em;border-radius:10px;border:1.5px solid rgba(var(--ds-info-rgb),.2);background:rgba(var(--ds-info-rgb),.04);">
+    <div style="font-weight:700;color:var(--ds-info);margin-bottom:.4em;font-size:.95em;">API surface — ①②③④</div>
+    <div style="line-height:1.65;opacity:.8;">
+      ① Lambda captures<br>
+      ② Direct <code>read/write</code><br>
+      ③ Plain-index handles<br>
+      ④ Explicit <code>compile()→execute()</code>
+    </div>
+    <div style="margin-top:.5em;font-size:.88em;opacity:.55;border-top:1px solid rgba(var(--ds-info-rgb),.12);padding-top:.4em;">
+      What the user writes — shapes how passes declare resources and wire dependencies.
     </div>
   </div>
-  <div style="padding:1em;border-radius:10px;border-top:3px solid var(--ds-code);background:rgba(var(--ds-code-rgb),.04);">
-    <div style="font-weight:800;font-size:.92em;margin-bottom:.4em;color:var(--ds-code);">📐 &ensp;Virtual resources</div>
-    <div style="font-size:.86em;line-height:1.6;opacity:.85;">
-      Requested by description (<code>{1920, 1080, RGBA8}</code>), not GPU handle. Virtual until the compiler maps them to memory.
+  <div style="padding:.8em 1em;border-radius:10px;border:1.5px solid rgba(var(--ds-code-rgb),.2);background:rgba(var(--ds-code-rgb),.04);">
+    <div style="font-weight:700;color:var(--ds-code);margin-bottom:.4em;font-size:.95em;">Compiler scope — ⑤⑥⑦⑧</div>
+    <div style="line-height:1.65;opacity:.8;">
+      ⑤ Transient + imported<br>
+      ⑥ Last-pass root<br>
+      ⑦ Single graphics queue<br>
+      ⑧ Full rebuild every frame
     </div>
-  </div>
-  <div style="padding:1em;border-radius:10px;border-top:3px solid var(--ds-success);background:rgba(var(--ds-success-rgb),.04);">
-    <div style="font-weight:800;font-size:.92em;margin-bottom:.4em;color:var(--ds-success);">♻️ &ensp;Owned lifetimes</div>
-    <div style="font-size:.86em;line-height:1.6;opacity:.85;">
-      The graph owns every transient resource from first use to last. You never call create or destroy.
+    <div style="margin-top:.5em;font-size:.88em;opacity:.55;border-top:1px solid rgba(var(--ds-code-rgb),.12);padding-top:.4em;">
+      What the compiler does — scopes sorting, culling, aliasing, and barrier insertion.
     </div>
   </div>
 </div>
-
-These three ideas produce a natural pipeline — declare your intent, let the compiler optimize, then execute:
-
-<!-- Timeline: declaration → compile → execution -->
-<div class="diagram-phases">
-  <div class="dph-col" style="border-color:var(--ds-info)">
-    <div class="dph-title" style="color:var(--ds-info)">① Declaration <span style="font-weight:400;font-size:.75em;opacity:.7;">CPU</span></div>
-    <div class="dph-body">
-      <code>addPass(setup, execute)</code><br>
-      ├ setup lambda runs<br>
-      &nbsp;&nbsp;• declare reads / writes<br>
-      &nbsp;&nbsp;• request resources<br>
-      └ <strong>no GPU work, no allocation</strong>
-      <div style="margin-top:.6em;padding:.35em .6em;border-radius:5px;background:rgba(var(--ds-info-rgb),.08);font-size:.82em;line-height:1.4;border:1px solid rgba(var(--ds-info-rgb),.12);">
-        Resources are <strong>virtual</strong> — just a description + handle index. Zero bytes allocated.
-      </div>
-    </div>
-  </div>
-  <div class="dph-col" style="border-color:var(--ds-code)">
-    <div class="dph-title" style="color:var(--ds-code)">② Compile <span style="font-weight:400;font-size:.75em;opacity:.7;">CPU</span></div>
-    <div class="dph-body">
-      ├ <strong>sort</strong> — topo order (Kahn's)<br>
-      ├ <strong>cull</strong> — remove dead passes<br>
-      ├ <strong>alias</strong> — map virtual → physical<br>
-      └ <strong>barrier</strong> — emit transitions
-      <div style="margin-top:.6em;padding:.35em .6em;border-radius:5px;background:rgba(var(--ds-code-rgb),.08);font-size:.82em;line-height:1.4;border:1px solid rgba(var(--ds-code-rgb),.12);">
-        Aliasing and allocation <strong>happen</strong> here — non-overlapping lifetimes share the same heap, physical memory is bound before execute.
-      </div>
-    </div>
-  </div>
-  <div class="dph-col" style="border-color:var(--ds-success)">
-    <div class="dph-title" style="color:var(--ds-success)">③ Execute <span style="font-weight:400;font-size:.75em;opacity:.7;">GPU</span></div>
-    <div class="dph-body">
-      for each pass in sorted order:<br>
-      ├ insert automatic barriers<br>
-      └ call execute lambda<br>
-      &nbsp;&nbsp;→ draw / dispatch / copy
-      <div style="margin-top:.6em;padding:.35em .6em;border-radius:5px;background:rgba(var(--ds-success-rgb),.08);font-size:.82em;line-height:1.4;border:1px solid rgba(var(--ds-success-rgb),.12);">
-        Lambdas see a <strong>fully resolved</strong> environment — memory bound, barriers placed, resources ready.
-      </div>
-    </div>
-  </div>
+<div style="text-align:center;font-size:.82em;opacity:.55;margin-bottom:1em;">
+  Every decision has a clear upgrade path → <a href="../frame-graph-production/">Part IV</a>
 </div>
+
 
 ### 🚀 The Target API
 
-Here's where we're headed — the final API in under 30 lines:
+With those choices made, here's where we're headed — the final API in under 30 lines:
 
 {{< include-code file="api_demo.cpp" lang="cpp" open="true" >}}
 
@@ -223,6 +345,7 @@ Here's what changes from v1. The `ResourceDesc` array becomes `ResourceEntry` �
 +    ResourceDesc desc;
 +    std::vector<ResourceVersion> versions;  // version 0, 1, 2...
 +    ResourceState currentState = ResourceState::Undefined;
++    bool imported = false;   // imported resources: barriers tracked, not aliased
 +};
 
 @@ RenderPass — new fields @@
@@ -251,6 +374,12 @@ Here's what changes from v1. The `ResourceDesc` array becomes `ResourceEntry` �
 +        entries_[h.index].versions.push_back({});
 +        entries_[h.index].versions.back().writerPass = passIdx;
 +        passes_[passIdx].writes.push_back(h);
++    }
++
++    ResourceHandle importResource(const ResourceDesc& desc, ResourceState initial) {
++        ResourceHandle h{(uint32_t)entries_.size()};
++        entries_.push_back({desc, {{}}, initial, /*imported=*/true});
++        return h;
 +    }
 
 @@ Storage @@
@@ -419,6 +548,10 @@ Two new structs — a `Lifetime` per resource and a `PhysicalBlock` per heap slo
 +                life[h.index].firstUse = std::min(life[h.index].firstUse, order);
 +                life[h.index].lastUse  = std::max(life[h.index].lastUse,  order);
 +            }
++        }
++        // imported resources are externally owned — exclude from aliasing
++        for (size_t i = 0; i < entries_.size(); i++) {
++            if (entries_[i].imported) life[i].isTransient = false;
 +        }
 +        return life;
 +    }

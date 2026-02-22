@@ -45,6 +45,13 @@ public:
         return { static_cast<uint32_t>(resources_.size() - 1) };
     }
 
+    // Import an external resource (e.g. swapchain backbuffer).
+    // Barriers are tracked, but the graph does not own its memory.
+    ResourceHandle importResource(const ResourceDesc& desc) {
+        resources_.push_back(desc);  // v1: same as create (no aliasing yet)
+        return { static_cast<uint32_t>(resources_.size() - 1) };
+    }
+
     // Register a pass. Setup runs now; execute is stored for later.
     template <typename SetupFn, typename ExecFn>
     void addPass(const std::string& name, SetupFn&& setup, ExecFn&& exec) {

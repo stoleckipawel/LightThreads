@@ -7,6 +7,12 @@ int main() {
     printf("=== Frame Graph v3: Lifetimes & Memory Aliasing ===\n");
 
     FrameGraph fg;
+
+    // Import the swapchain backbuffer — externally owned.
+    // The graph tracks barriers but won't alias it.
+    auto backbuffer = fg.importResource({1920, 1080, Format::RGBA8},
+                                        ResourceState::Present);
+
     auto depth = fg.createResource({1920, 1080, Format::D32F});
     auto gbufA = fg.createResource({1920, 1080, Format::RGBA8});
     auto gbufN = fg.createResource({1920, 1080, Format::RGBA8});
@@ -34,9 +40,14 @@ int main() {
         [&]() { fg.read(4, bloom); fg.write(4, hdr); },
         [&](/*cmd*/) { printf("  >> exec: Tonemap\n"); });
 
+    // Present — reads HDR, writes to imported backbuffer.
+    fg.addPass("Present",
+        [&]() { fg.read(5, hdr); fg.write(5, backbuffer); },
+        [&](/*cmd*/) { printf("  >> exec: Present\n"); });
+
     // Dead pass — nothing reads debug, so the graph will cull it.
     fg.addPass("DebugOverlay",
-        [&]() { fg.write(5, debug); },
+        [&]() { fg.write(6, debug); },
         [&](/*cmd*/) { printf("  >> exec: DebugOverlay\n"); });
 
     auto plan = fg.compile();   // topo-sort, cull, alias
